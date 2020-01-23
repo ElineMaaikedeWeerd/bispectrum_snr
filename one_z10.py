@@ -520,7 +520,66 @@ def dBperm_dbeta19(i,j,l,mu,k,B1,B2,gamma1,gamma2,f):
     f1 = (KN1(i,mu,B1,f) + KGR1(i,mu,k,gamma1,gamma2)) * (KN1(j,mu,B1,f) + KGR1(j,mu,k,gamma1,gamma2)) * dKGR2_dbeta19(i,j,l,k,mu)
     return ( f1 * Pm(i,k) * Pm(j,k) )
 
-#vector with derivatives of Bg - to be done
+#full ones
+def dB_dbeta1(i,j,l,mu,k,B1,B2,gamma1,gamma2,f):
+    return (dBperm_dbeta1(1,2,3,mu,k,B1,B2,gamma1,gamma2,f) + dBperm_dbeta1(1,3,2,mu,k,B1,B2,gamma1,gamma2,f)+dBperm_dbeta1(2,3,1,mu,k,B1,B2,gamma1,gamma2,f))
+
+def dB_dbeta2(i,j,l,mu,k,B1,B2,gamma1,gamma2,f):
+    return (dBperm_dbeta2(1,2,3,mu,k,B1,B2,gamma1,gamma2,f) + dBperm_dbeta2(1,3,2,mu,k,B1,B2,gamma1,gamma2,f)+dBperm_dbeta2(2,3,1,mu,k,B1,B2,gamma1,gamma2,f))
+
+def dB_dbeta3(i,j,l,mu,k,B1,B2,gamma1,gamma2,f):
+    return (dBperm_dbeta3(1,2,3,mu,k,B1,B2,gamma1,gamma2,f) + dBperm_dbeta3(1,3,2,mu,k,B1,B2,gamma1,gamma2,f)+dBperm_dbeta3(2,3,1,mu,k,B1,B2,gamma1,gamma2,f))
+
+def dB_dbeta4(i,j,l,mu,k,B1,B2,gamma1,gamma2,f):
+    return (dBperm_dbeta4(1,2,3,mu,k,B1,B2,gamma1,gamma2,f) + dBperm_dbeta4(1,3,2,mu,k,B1,B2,gamma1,gamma2,f)+dBperm_dbeta4(2,3,1,mu,k,B1,B2,gamma1,gamma2,f))
+
+def dB_dbeta5(i,j,l,mu,k,B1,B2,gamma1,gamma2,f):
+    return (dBperm_dbeta5(1,2,3,mu,k,B1,B2,gamma1,gamma2,f) + dBperm_dbeta5(1,3,2,mu,k,B1,B2,gamma1,gamma2,f)+dBperm_dbeta5(2,3,1,mu,k,B1,B2,gamma1,gamma2,f))
+
+def dB_dbeta6(i,j,l,mu,k,B1,B2,gamma1,gamma2,f):
+    return (dBperm_dbeta6(1,2,3,mu,k,B1,B2,gamma1,gamma2,f) + dBperm_dbeta6(1,3,2,mu,k,B1,B2,gamma1,gamma2,f)+dBperm_dbeta6(2,3,1,mu,k,B1,B2,gamma1,gamma2,f))
+
+def dB_dbeta7(i,j,l,mu,k,B1,B2,gamma1,gamma2,f):
+    return (dBperm_dbeta7(1,2,3,mu,k,B1,B2,gamma1,gamma2,f) + dBperm_dbeta7(1,3,2,mu,k,B1,B2,gamma1,gamma2,f)+dBperm_dbeta7(2,3,1,mu,k,B1,B2,gamma1,gamma2,f))
+
+def dB_dbeta8(i,j,l,mu,k,B1,B2,gamma1,gamma2,f):
+    return (dBperm_dbeta8(1,2,3,mu,k,B1,B2,gamma1,gamma2,f) + dBperm_dbeta8(1,3,2,mu,k,B1,B2,gamma1,gamma2,f)+dBperm_dbeta8(2,3,1,mu,k,B1,B2,gamma1,gamma2,f))
+
+def dB_dbeta9(i,j,l,mu,k,B1,B2,gamma1,gamma2,f):
+    return (dBperm_dbeta9(1,2,3,mu,k,B1,B2,gamma1,gamma2,f) + dBperm_dbeta9(1,3,2,mu,k,B1,B2,gamma1,gamma2,f)+dBperm_dbeta9(2,3,1,mu,k,B1,B2,gamma1,gamma2,f))
+
+def dB_dbeta10(i,j,l,mu,k,B1,B2,gamma1,gamma2,f):
+    return (dBperm_dbeta10(1,2,3,mu,k,B1,B2,gamma1,gamma2,f) + dBperm_dbeta10(1,3,2,mu,k,B1,B2,gamma1,gamma2,f)+dBperm_dbeta10(2,3,1,mu,k,B1,B2,gamma1,gamma2,f))
+
+def dB_dbeta11(i,j,l,mu,k,B1,B2,gamma1,gamma2,f):
+    return (dBperm_dbeta11(1,2,3,mu,k,B1,B2,gamma1,gamma2,f) + dBperm_dbeta11(1,3,2,mu,k,B1,B2,gamma1,gamma2,f)+dBperm_dbeta11(2,3,1,mu,k,B1,B2,gamma1,gamma2,f))
+
+def dB_dbeta12(i,j,l,mu,k,B1,B2,gamma1,gamma2,f):
+    return (dBperm_dbeta12(1,2,3,mu,k,B1,B2,gamma1,gamma2,f) + dBperm_dbeta12(1,3,2,mu,k,B1,B2,gamma1,gamma2,f)+dBperm_dbeta12(2,3,1,mu,k,B1,B2,gamma1,gamma2,f))
+
+def dB_dbeta13(i,j,l,mu,k,B1,B2,gamma1,gamma2,f):
+    return (dBperm_dbeta13(1,2,3,mu,k,B1,B2,gamma1,gamma2,f) + dBperm_dbeta13(1,3,2,mu,k,B1,B2,gamma1,gamma2,f)+dBperm_dbeta13(2,3,1,mu,k,B1,B2,gamma1,gamma2,f))
+
+def dB_dbeta14(i,j,l,mu,k,B1,B2,gamma1,gamma2,f):
+    return (dBperm_dbeta14(1,2,3,mu,k,B1,B2,gamma1,gamma2,f) + dBperm_dbeta14(1,3,2,mu,k,B1,B2,gamma1,gamma2,f)+dBperm_dbeta14(2,3,1,mu,k,B1,B2,gamma1,gamma2,f))
+
+def dB_dbeta15(i,j,l,mu,k,B1,B2,gamma1,gamma2,f):
+    return (dBperm_dbeta15(1,2,3,mu,k,B1,B2,gamma1,gamma2,f) + dBperm_dbeta15(1,3,2,mu,k,B1,B2,gamma1,gamma2,f)+dBperm_dbeta15(2,3,1,mu,k,B1,B2,gamma1,gamma2,f))
+
+def dB_dbeta16(i,j,l,mu,k,B1,B2,gamma1,gamma2,f):
+    return (dBperm_dbeta16(1,2,3,mu,k,B1,B2,gamma1,gamma2,f) + dBperm_dbeta16(1,3,2,mu,k,B1,B2,gamma1,gamma2,f)+dBperm_dbeta16(2,3,1,mu,k,B1,B2,gamma1,gamma2,f))
+
+def dB_dbeta17(i,j,l,mu,k,B1,B2,gamma1,gamma2,f):
+    return (dBperm_dbeta17(1,2,3,mu,k,B1,B2,gamma1,gamma2,f) + dBperm_dbeta17(1,3,2,mu,k,B1,B2,gamma1,gamma2,f)+dBperm_dbeta17(2,3,1,mu,k,B1,B2,gamma1,gamma2,f))
+
+def dB_dbeta18(i,j,l,mu,k,B1,B2,gamma1,gamma2,f):
+    return (dBperm_dbeta18(1,2,3,mu,k,B1,B2,gamma1,gamma2,f) + dBperm_dbeta18(1,3,2,mu,k,B1,B2,gamma1,gamma2,f)+dBperm_dbeta18(2,3,1,mu,k,B1,B2,gamma1,gamma2,f))
+
+def dB_dbeta19(i,j,l,mu,k,B1,B2,gamma1,gamma2,f):
+    return (dBperm_dbeta19(1,2,3,mu,k,B1,B2,gamma1,gamma2,f) + dBperm_dbeta19(1,3,2,mu,k,B1,B2,gamma1,gamma2,f)+dBperm_dbeta19(2,3,1,mu,k,B1,B2,gamma1,gamma2,f))
+
+
+#vector with derivatives of Bg - to be done?
 
 
 
