@@ -77,12 +77,10 @@ def Dgz(zc):
     ans = sp.integrate.romberg(Dg_dz, 0.0, zc)
     return np.exp(-ans)
 
-#Power spectrum as fn of z 
+#Power spectrum as fn of z : alternative way of calculating z dep power spectrum, computationally slower!
 #def Pmz(kk,zc):    
 #    return pow(Dgz(zc),2)*Pmz0(kk)
 
-
-# In[32]:
 
 
 Hu = results.h_of_z(Z) * (1/(1 + Z))
@@ -143,8 +141,7 @@ def Pm(i,k):
     return Pmz(kk)
 
 
-# In[33]:
-
+##example of how to initialise k, mu dictionaries- 
 
 #k = {1:k1,2:k2,3:k3,"theta":theta}
 #mu = {1:mu1,2:mu2,3:mu3}
@@ -154,6 +151,8 @@ def Pm(i,k):
 #     mu[2]=mu[1]*np.cos(k["theta"]) + np.sqrt(1.0-mu[1]**2) * np.sin(k["theta"])*np.cos(PHI)
 #     mu[3] = - (k[1] / k[3]) * mu[1] - (k[2] / k[3]) * mu[2]
 #     return mu
+
+#what to do in the case of arccos divergent 
 class NotATriangle(Exception):
     pass
 
@@ -169,7 +168,7 @@ def get_mus(MU_1,PHI,k):
     mu[3] = - (k[1] / k[3]) * mu[1] - (k[2] / k[3]) * mu[2]
     return mu
 
-
+#calculate the angle theta between wavevectors k_i,k_j (first two arguments of the cosinus)
 def get_cosinus(i,j,k):
     perms = [1,2,3]
     assert i!=j
@@ -182,7 +181,7 @@ def get_cosinus(i,j,k):
     return 0.5 * (k[l]**2 - k[i]**2 - k[j]**2) / (k[i] * k[j])
     
 #doppler snr: only O(1/k) corrections included
-
+#scale-independent kernels
 def E(i,j,l,k):
     cosinus = get_cosinus(i,j,k)
     return ((k[i]**2 * k[j]**2) / (k[l]**4) ) * (3 + 2 * cosinus * (k[i]/k[j] + k[j]/k[i]) + cosinus**2  )
@@ -195,11 +194,12 @@ def G(i,j,l,k):
     cosinus = get_cosinus(i,j,k)
     return 6/7 + cosinus * (k[i]/k[j] + k[j]/k[i]) + (2 - 6/7) * cosinus**2 
 
+#Fourier-space bispectrum kernels 
 def KN1(i,mu,B1,f):
     return B1 + f * mu[i]**2
 
 def KGR1(i,mu,k,gamma1,gamma2):
-    return (gamma1/k[i])*1j*mu[i]
+    return (gamma1/k[i])*1j*mu[i] + (gamma2 / k[i]**2)
 
 def KN2(i,j,l,k,mu,B1,B2,f):
     cosinus = get_cosinus(i,j,k)
@@ -218,27 +218,33 @@ def KGR2(i,j,l,k,mu,beta):
     F_f = F(i,j,l,k)
     G_f = G(i,j,l,k)
     k_prod = k[i]**2 * k[j]**2
-    #p1 = beta[1] + E_f * beta[2] 
-    #p2 = 1j* ((mu[i] * k[i] + mu[j] * k[j]) * beta[3] + mu[l] * k[l] * (beta[4] + E_f * beta[5]) )
-    #p3 = k_prod/(k[l]**2) * (F_f * beta[6] + G_f * beta[7]) + (mu[i] * k[i] * mu[j] * k[j])*beta[8]
-    #p4 = mu[l]**2 * k[l]**2 * (beta[9] + E_f * beta[10]) + (k[i] * k[j] * cosinus) * beta[11]
-    #p5 = (k[i]**2 + k[j]**2) * beta[12] + (mu[i]**2 * k[i]**2 + mu[j]**2 * k[j]**2) * beta[13] 
+    p1 = beta[1] + E_f * beta[2] 
+    p2 = 1j* ((mu[i] * k[i] + mu[j] * k[j]) * beta[3] + mu[l] * k[l] * (beta[4] + E_f * beta[5]) )
+    p3 = k_prod/(k[l]**2) * (F_f * beta[6] + G_f * beta[7]) + (mu[i] * k[i] * mu[j] * k[j])*beta[8]
+    p4 = mu[l]**2 * k[l]**2 * (beta[9] + E_f * beta[10]) + (k[i] * k[j] * cosinus) * beta[11]
+    p5 = (k[i]**2 + k[j]**2) * beta[12] + (mu[i]**2 * k[i]**2 + mu[j]**2 * k[j]**2) * beta[13] 
     p_comp1 = (mu[i] * k[i]**3 + mu[j] * k[j]**3) * beta[14]
     p_comp2 = (mu[i] * k[i] + mu[j] * k[j]) * k[i] * k[j] * cosinus * beta[15]
     p_comp3 = k[i] * k[j] * (mu[i] * k[j] + mu[j] * k[i]) * beta[16]
     p_comp4 = (mu[i]**3 * k[i]**3 + mu[j]**3 * k[j]**3) * beta[17]
     p_comp5 = mu[i] * mu[j] * k[i] * k[j] * (mu[i] * k[i] + mu[j] * k[j]) * beta[18]
     p_comp6 = mu[l] * k_prod/k[l] * G_f * beta[19]
-    #real = p1 + p2 + p3 + p4 + p5
+    real = p1 + p2 + p3 + p4 + p5 #comment out real part for Doppler/leading order correction
     comp = p_comp1 + p_comp2 + p_comp3 + p_comp4 + p_comp5 + p_comp6
-    return  (1/k_prod) * (1j * comp)
+    return  (1/k_prod) *(real + (1j * comp))
 
 
-def B_perm(i,j,l,k,mu,B1,B2,gamma1,gamma2,beta,f):
+def B_permDopp(i,j,l,k,mu,B1,B2,gamma1,gamma2,beta,f):
     f1 = KN1(i,mu,B1,f) * KGR1(j,mu,k,gamma1,gamma2) * KN2(i,j,l,k,mu,B1,B2,f) 
     f2 = KN1(j,mu,B1,f) * KGR1(i,mu,k,gamma1,gamma2) * KN2(i,j,l,k,mu,B1,B2,f)
     f3 = KN1(i,mu,B1,f) * KN1(j,mu,B1,f) * KGR2(i,j,l,k,mu,beta)
     return (f1 + f2 + f3) * Pm(i,k) * Pm(j,k)
+
+def B_perm(i,j,l,k,mu,B1,B2,gamma1,gamma2,beta,f):
+    f1 = KN1(i,mu,B1,f) + KGR1(i,mu,k,gamma1,gamma2)
+    f2 = KN1(j,mu,B1,f) + KGR1(j,mu,k,gamma1,gamma2)
+    f3 = KN2(i,j,l,k,mu,B1,B2,f) + KGR2(i,j,l,k,mu,beta)
+    return f1 * f2 * f3 * Pm(i,k) * Pm(j,k)
 
 def B_full(k,mu,B1,B2,gamma1,gamma2,beta,f):
     return  (B_perm(1,2,3,k,mu,B1,B2,gamma1,gamma2,beta,f) + B_perm(1,3,2,k,mu,B1,B2,gamma1,gamma2,beta,f) + B_perm(2,3,1,k,mu,B1,B2,gamma1,gamma2,beta,f)) * np.exp(- (1/2) * (k[1]**2 * mu[1]**2 + k[2]**2 * mu[2]**2 + k[3]**2 * mu[3]**2) * sigma**2)
@@ -417,19 +423,102 @@ def dKGR2_dbeta19(i,j,l,k,mu):
 
 ##derivatives of B_g, using the kernel derivatives above##
 
-def dKGR1_dg1(i,mu,k):
-	return 1j * mu[i] * (1 / k[i])
-
-def dKGR1_dg2(i,mu,k,gamma1,gamma2):
-	return (1 / k[i]**2)
-
 def dKGR2_dbeta1(i,j,l,k,mu):
 	return 1 / (k[i]**2 * k[j]**2)
 
+#wrt gamma
+def dBperm_dg1(i,j,l,mu,k,B1,B2,gamma1,gamma2,beta,f):
+	t1 = dKGR1_dg1(i,mu,k) * (KN1(j,mu,B1,f) + KGR1(j,mu,k,gamma1,gamma2)) * (KN2(i,j,l,k,mu,B1,B2,f) + KGR(i,j,l,k,mu,beta))
+    t2 = (KN1(i,mu,B1,f) + KGR1(i,mu,k,gamma1,gamma2)) * dKGR1_dg1(j,mu,k) * (KN2(i,j,l,k,mu,B1,B2,f) + KGR(i,j,l,k,mu,beta))
+    return (t1 + t2) * Pm(i,k) * Pm(j,k)
 
-def dB_dg1(i,j,l,mu,k):
-	t1 = 
+def dBperm_dg2(i,j,l,mu,k,B1,B2,gamma1,gamma2,beta,f):
+    t1 = dKGR1_dg2(i,mu,k) * (KN1(j,mu,B1,f) + KGR1(j,mu,k,gamma1,gamma2)) * (KN2(i,j,l,k,mu,B1,B2,f) + KGR(i,j,l,k,mu,beta))
+    t2 = (KN1(i,mu,B1,f) + KGR1(i,mu,k,gamma1,gamma2)) * dKGR1_dg2(j,mu,k) * (KN2(i,j,l,k,mu,B1,B2,f) + KGR(i,j,l,k,mu,beta))
+    return (t1 + t2) * Pm(i,k) * Pm(j,k)
 
+def dB_dg1(k,mu,B1,B2,gamma1,gamma2,beta,f):
+    return (dBperm_dg1(1,2,3,k,mu,B1,B2,gamma1,gamma2,beta,f) + dBperm_dg1(1,3,2,k,mu,B1,B2,gamma1,gamma2,beta,f) + dBperm_dg1(2,3,1,k,mu,B1,B2,gamma1,gamma2,beta,f))
+
+def dB_dg2(k,mu,B1,B2,gamma1,gamma2,beta,f):
+    return (dBperm_dg2(1,2,3,k,mu,B1,B2,gamma1,gamma2,beta,f) + dBperm_dg2(1,3,2,k,mu,B1,B2,gamma1,gamma2,beta,f) + dBperm_dg2(2,3,1,k,mu,B1,B2,gamma1,gamma2,beta,f))
+
+#wrt beta
+def dBperm_dbeta1(i,j,l,mu,k,B1,B2,gamma1,gamma2,f):
+    f1 = (KN1(i,mu,B1,f) + KGR1(i,mu,k,gamma1,gamma2)) * (KN1(j,mu,B1,f) + KGR1(j,mu,k,gamma1,gamma2)) * dKGR2_dbeta1(i,j,l,k,mu)
+    return ( f1 * Pm(i,k) * Pm(j,k) )
+
+def dBperm_dbeta2(i,j,l,mu,k,B1,B2,gamma1,gamma2,f):
+    f1 = (KN1(i,mu,B1,f) + KGR1(i,mu,k,gamma1,gamma2)) * (KN1(j,mu,B1,f) + KGR1(j,mu,k,gamma1,gamma2)) * dKGR2_dbeta2(i,j,l,k,mu)
+    return ( f1 * Pm(i,k) * Pm(j,k) )
+
+def dBperm_dbeta3(i,j,l,mu,k,B1,B2,gamma1,gamma2,f):
+    f1 = (KN1(i,mu,B1,f) + KGR1(i,mu,k,gamma1,gamma2)) * (KN1(j,mu,B1,f) + KGR1(j,mu,k,gamma1,gamma2)) * dKGR2_dbeta3(i,j,l,k,mu)
+    return ( f1 * Pm(i,k) * Pm(j,k) )
+
+def dBperm_dbeta4(i,j,l,mu,k,B1,B2,gamma1,gamma2,f):
+    f1 = (KN1(i,mu,B1,f) + KGR1(i,mu,k,gamma1,gamma2)) * (KN1(j,mu,B1,f) + KGR1(j,mu,k,gamma1,gamma2)) * dKGR2_dbeta4(i,j,l,k,mu)
+    return ( f1 * Pm(i,k) * Pm(j,k) )
+
+def dBperm_dbeta5(i,j,l,mu,k,B1,B2,gamma1,gamma2,f):
+    f1 = (KN1(i,mu,B1,f) + KGR1(i,mu,k,gamma1,gamma2)) * (KN1(j,mu,B1,f) + KGR1(j,mu,k,gamma1,gamma2)) * dKGR2_dbeta5(i,j,l,k,mu)
+    return ( f1 * Pm(i,k) * Pm(j,k) )
+
+def dBperm_dbeta6(i,j,l,mu,k,B1,B2,gamma1,gamma2,f):
+    f1 = (KN1(i,mu,B1,f) + KGR1(i,mu,k,gamma1,gamma2)) * (KN1(j,mu,B1,f) + KGR1(j,mu,k,gamma1,gamma2)) * dKGR2_dbeta6(i,j,l,k,mu)
+    return ( f1 * Pm(i,k) * Pm(j,k) )
+
+def dBperm_dbeta7(i,j,l,mu,k,B1,B2,gamma1,gamma2,f):
+    f1 = (KN1(i,mu,B1,f) + KGR1(i,mu,k,gamma1,gamma2)) * (KN1(j,mu,B1,f) + KGR1(j,mu,k,gamma1,gamma2)) * dKGR2_dbeta7(i,j,l,k,mu)
+    return ( f1 * Pm(i,k) * Pm(j,k) )
+
+def dBperm_dbeta8(i,j,l,mu,k,B1,B2,gamma1,gamma2,f):
+    f1 = (KN1(i,mu,B1,f) + KGR1(i,mu,k,gamma1,gamma2)) * (KN1(j,mu,B1,f) + KGR1(j,mu,k,gamma1,gamma2)) * dKGR2_dbeta8(i,j,l,k,mu)
+    return ( f1 * Pm(i,k) * Pm(j,k) )
+
+def dBperm_dbeta9(i,j,l,mu,k,B1,B2,gamma1,gamma2,f):
+    f1 = (KN1(i,mu,B1,f) + KGR1(i,mu,k,gamma1,gamma2)) * (KN1(j,mu,B1,f) + KGR1(j,mu,k,gamma1,gamma2)) * dKGR2_dbeta9(i,j,l,k,mu)
+    return ( f1 * Pm(i,k) * Pm(j,k) )
+
+def dBperm_dbeta10(i,j,l,mu,k,B1,B2,gamma1,gamma2,f):
+    f1 = (KN1(i,mu,B1,f) + KGR1(i,mu,k,gamma1,gamma2)) * (KN1(j,mu,B1,f) + KGR1(j,mu,k,gamma1,gamma2)) * dKGR2_dbeta10(i,j,l,k,mu)
+    return ( f1 * Pm(i,k) * Pm(j,k) )
+
+def dBperm_dbeta11(i,j,l,mu,k,B1,B2,gamma1,gamma2,f):
+    f1 = (KN1(i,mu,B1,f) + KGR1(i,mu,k,gamma1,gamma2)) * (KN1(j,mu,B1,f) + KGR1(j,mu,k,gamma1,gamma2)) * dKGR2_dbeta11(i,j,l,k,mu)
+    return ( f1 * Pm(i,k) * Pm(j,k) )
+
+def dBperm_dbeta12(i,j,l,mu,k,B1,B2,gamma1,gamma2,f):
+    f1 = (KN1(i,mu,B1,f) + KGR1(i,mu,k,gamma1,gamma2)) * (KN1(j,mu,B1,f) + KGR1(j,mu,k,gamma1,gamma2)) * dKGR2_dbeta12(i,j,l,k,mu)
+    return ( f1 * Pm(i,k) * Pm(j,k) )
+
+def dBperm_dbeta13(i,j,l,mu,k,B1,B2,gamma1,gamma2,f):
+    f1 = (KN1(i,mu,B1,f) + KGR1(i,mu,k,gamma1,gamma2)) * (KN1(j,mu,B1,f) + KGR1(j,mu,k,gamma1,gamma2)) * dKGR2_dbeta13(i,j,l,k,mu)
+    return ( f1 * Pm(i,k) * Pm(j,k) )
+
+def dBperm_dbeta14(i,j,l,mu,k,B1,B2,gamma1,gamma2,f):
+    f1 = (KN1(i,mu,B1,f) + KGR1(i,mu,k,gamma1,gamma2)) * (KN1(j,mu,B1,f) + KGR1(j,mu,k,gamma1,gamma2)) * dKGR2_dbeta14(i,j,l,k,mu)
+    return ( f1 * Pm(i,k) * Pm(j,k) )
+
+def dBperm_dbeta15(i,j,l,mu,k,B1,B2,gamma1,gamma2,f):
+    f1 = (KN1(i,mu,B1,f) + KGR1(i,mu,k,gamma1,gamma2)) * (KN1(j,mu,B1,f) + KGR1(j,mu,k,gamma1,gamma2)) * dKGR2_dbeta15(i,j,l,k,mu)
+    return ( f1 * Pm(i,k) * Pm(j,k) )
+
+def dBperm_dbeta16(i,j,l,mu,k,B1,B2,gamma1,gamma2,f):
+    f1 = (KN1(i,mu,B1,f) + KGR1(i,mu,k,gamma1,gamma2)) * (KN1(j,mu,B1,f) + KGR1(j,mu,k,gamma1,gamma2)) * dKGR2_dbeta16(i,j,l,k,mu)
+    return ( f1 * Pm(i,k) * Pm(j,k) )
+
+def dBperm_dbeta17(i,j,l,mu,k,B1,B2,gamma1,gamma2,f):
+    f1 = (KN1(i,mu,B1,f) + KGR1(i,mu,k,gamma1,gamma2)) * (KN1(j,mu,B1,f) + KGR1(j,mu,k,gamma1,gamma2)) * dKGR2_dbeta17(i,j,l,k,mu)
+    return ( f1 * Pm(i,k) * Pm(j,k) )
+
+def dBperm_dbeta18(i,j,l,mu,k,B1,B2,gamma1,gamma2,f):
+    f1 = (KN1(i,mu,B1,f) + KGR1(i,mu,k,gamma1,gamma2)) * (KN1(j,mu,B1,f) + KGR1(j,mu,k,gamma1,gamma2)) * dKGR2_dbeta18(i,j,l,k,mu)
+    return ( f1 * Pm(i,k) * Pm(j,k) )
+
+def dBperm_dbeta19(i,j,l,mu,k,B1,B2,gamma1,gamma2,f):
+    f1 = (KN1(i,mu,B1,f) + KGR1(i,mu,k,gamma1,gamma2)) * (KN1(j,mu,B1,f) + KGR1(j,mu,k,gamma1,gamma2)) * dKGR2_dbeta19(i,j,l,k,mu)
+    return ( f1 * Pm(i,k) * Pm(j,k) )
 
 #vector with derivatives of Bg - to be done
 
