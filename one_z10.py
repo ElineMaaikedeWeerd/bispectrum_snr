@@ -10,7 +10,7 @@ from camb import model, initialpower
 from mpi4py.futures import MPIPoolExecutor
 import time
 
-#ladida#Fiducial cosmological parameters Planck 2018
+#Fiducial cosmological parameters Planck 2018
 c=3e5
 hubble=0.6766
 omegab=0.02242*pow(hubble,-2)
