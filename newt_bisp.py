@@ -144,8 +144,6 @@ def Pm(i,k):
     return Pmz(kk)
 
 
-# In[33]:
-
 
 #k = {1:k1,2:k2,3:k3,"theta":theta}
 #mu = {1:mu1,2:mu2,3:mu3}
@@ -155,6 +153,8 @@ def Pm(i,k):
 #     mu[2]=mu[1]*np.cos(k["theta"]) + np.sqrt(1.0-mu[1]**2) * np.sin(k["theta"])*np.cos(PHI)
 #     mu[3] = - (k[1] / k[3]) * mu[1] - (k[2] / k[3]) * mu[2]
 #     return mu
+
+
 class NotATriangle(Exception):
     pass
 
@@ -286,7 +286,7 @@ phi_bins = np.arange(0,2*np.pi,deltaphi)
 
 if __name__ == '__main__': 
 
-	k1_bins = np.arange(kmin,kmax+deltak,deltak)
+	k1_bins = np.arange(kmin,kmax,deltak)
 	k2_bins = np.arange(kmin,kmax,deltak)
 	k3_bins = np.arange(kmin,kmax,deltak)
 	snr=0.0
