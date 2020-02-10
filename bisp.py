@@ -1,3 +1,12 @@
+"""
+	This code computes the signal to noise ratio for Newtonian and leading order 
+	relativistic bispectrum. 
+	Needs python3 with camb, tqdm, and astropy installed. 
+	Control of plotting and effects included in the main at the bottom-
+	better not touch anything else for now.. 
+	Written by E.M. de Weerd, Feb 2020
+	-- still to be improved -- 
+"""
 import numpy as np
 
 
@@ -6,14 +15,12 @@ from scipy.interpolate import interp1d
 
 import camb
 
-import math
-
 from tqdm import tqdm, trange
 from astropy import constants as const
 
 import matplotlib.pyplot as plt
 
-#Fiducial cosmological parameters Planck 2018
+#Fiducial cosmological parameters: Planck 2018
 c= const.c.value
 hubble=0.6766
 omegab=0.02242*pow(hubble,-2)
@@ -27,13 +34,15 @@ gamma=0.545
 
 #table of b_e and Q from doppler draft
 euclid_data = np.loadtxt('snr_surveyparams.txt')
-#the table from the draft  has columns z, b_e, Q
+
+#the table from the draft  has columns z, b_e, Q, n_g, V, sigma
 z_euclid = euclid_data[:,0]
 be_euclid = interp1d(z_euclid, euclid_data[:,1])
 Q_euclid = interp1d(z_euclid,  euclid_data[:,2])
 ngt_euclid = interp1d(z_euclid,1e-3 * hubble**(3) * euclid_data[:,3])
 vt_euclid = interp1d(z_euclid, 1e9 * (1/hubble**3) *euclid_data[:,4])
 sigma_euclid = interp1d(z_euclid,(1/hubble) *  euclid_data[:,5])
+
 #Set up the fiducial cosmology (CAMB)
 pars = camb.CAMBparams()
 pars.set_cosmology(H0=H00, ombh2=omegab*pow(hubble,2), omch2=omegac*pow(hubble,2),omk=0,mnu=0)
@@ -44,8 +53,8 @@ pars.set_for_lmax(2500, lens_potential_accuracy=0);
 
 background = camb.get_background(pars)
 
-
-def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False):
+#this is a fn that will get the SNR for some Z- really this should be a class! tbc 
+def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True):
 	#Define E(z) = H(z)/H0
 	def Ez(zc):
 		return np.sqrt(1-om0+om0*pow(1+zc,3))
@@ -67,7 +76,7 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False):
 		ans = integrate.romberg(Dg_dz, 0.0, zc)
 		return np.exp(-ans)
 
-	#Power spectrum as fn of z (alternative way of computing it- slower)
+	#Power spectrum as fn of z (alternative way of computing it- slower?)
 	#def Pmz(kk,zc):
 	#    return pow(Dgz(zc),2)*Pmz0(kk)
 
@@ -108,10 +117,11 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False):
 		return Pmz(kk)
 
 
-
+	#example of how dictionaries k, mu are used- reminder to myself
 	#k = {1:k1,2:k2,3:k3,"theta":theta}
 	#mu = {1:mu1,2:mu2,3:mu3}
 
+	#and one day this will be a class and stuff should look like~ 
 	# def get_mus(self,MU_1,PHI,k):
 	#     mu = {1:MU_1}
 	#     mu[2]=mu[1]*np.cos(k["theta"]) + np.sqrt(1.0-mu[1]**2) * np.sin(k["theta"])*np.cos(PHI)
@@ -292,6 +302,13 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False):
 		res = (abs(bisp)**2) * varb_den / varb_num
 		return res.sum()
 
+	def set_kmax():
+		if kmax_zdep:
+			return 0.1 * hubble * (1 + Z)**((2/(2 + nss)))
+		else:
+			return 0.15*hubble
+		
+
 	#set redshift, get power spectrum from CAMB. No non-linear modelling
 	zbin = Z
 	pars.set_matter_power(redshifts=[zbin], kmax=2.0)
@@ -329,7 +346,7 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False):
 	partdb1 = 0
 	fnl=0
 
-	#also use fitting formulas from the draft to find V, ng, sigma
+	#also use fitting formulas from the draft to find V, ng, sigma >> dont use for now
 	#sigma = (5.29 - 0.249 * Z - 0.720 * Z**2 + 0.187 * Z**3)#/hubble
 	#ng_euclid =0.0193 * pow(Z, -0.0282) * np.exp(-2.81 * Z) * 1e-3 * hubble**3
 	#v_euclid = 8.85 * pow(Z, 1.65) * np.exp(-0.777 * Z) * 1e9 * (1/(hubble**3))
@@ -352,8 +369,8 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False):
 	#n_s from Planck best fit 2018:
 	#n_s = 0.9665
 	kmin = kf
-	kmax = 0.1 * hubble * pow((1 + Z),(2/(2 + nss)) )  #0.15*hubble
 	deltak =  kf
+	kmax = set_kmax()
 	mu_bins = np.arange(-1,1,deltamu)
 	phi_bins = np.arange(0,2*np.pi,deltaphi)
 	mu1 = np.tile(mu_bins,(50,1))
@@ -365,7 +382,7 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False):
 	snr=0.0
 
 	klist=[]
-  	#going through the bins, checking triangle conditions, appending valid triangles as dict
+	#going through the bins, checking triangle conditions, appending valid triangles as dict
 	for k1 in k_bins:
 		for k2 in k_bins[k_bins<=k1]:
 			for k3 in k_bins[k_bins<=k2]: #
@@ -385,28 +402,28 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False):
 
 if __name__ == '__main__':
 	"""
-		main: here do the actual work
-		initialise an empty list with some name
+		main: here to do the actual work
+		Initialise an empty list with some name
 		Z in a Z_range, currently going from 0.7 to 2.0 inclusive 
 		Turn desired effects off or on with the booleans
 	"""
 
-	dop_snrs_nodamp = []
-	dop_snrs_damp = []
+	dop_snrs_zdepkmax = []
+	dop_snrs_fixedkmax = []
 	for Z in np.arange(0.7,2.1,0.1):
-		dop_snrs_nodamp += [get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False)]
-		dop_snrs_damp += [get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=True)]
+		dop_snrs_zdepkmax += [get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True)]
+		dop_snrs_fixedkmax += [get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=False)]
 
 
 	#plotting here
 	plt.figure(figsize=(8,8))
 
-	plt.plot(np.arange(0.7,2.1,0.1),dop_snrs_nodamp,label='Dop B SNR -no damp P_twid')
-	plt.plot(np.arange(0.7,2.1,0.1),dop_snrs_damp,label='Dop B SNR -damp P_twid')
+	plt.plot(np.arange(0.7,2.1,0.1),dop_snrs_zdepkmax,label='Dop B SNR - z dep k_max')
+	plt.plot(np.arange(0.7,2.1,0.1),dop_snrs_fixedkmax,label='Dop B SNR - fixed k_max')
 	plt.xlim(0.6,2)
 	#plt.ylim(0,300)
 	plt.legend()
-	plt.savefig("Dop_B_snrs_damps2.png")
+	plt.savefig("Dop_B_snrs_kmaxeff.png")
 	
 
 
