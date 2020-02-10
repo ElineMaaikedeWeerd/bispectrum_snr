@@ -74,7 +74,7 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False):
 
 	def set_beta_coeffs():
 		"""
-			Function that relies on global variable to return beta coefficients
+			Function that relies on global variables to return beta coefficients
 			from papers
 		"""
 		beta = {}
@@ -118,17 +118,23 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False):
 	#     mu[3] = - (k[1] / k[3]) * mu[1] - (k[2] / k[3]) * mu[2]
 	#     return mu
 
-
+	#pass when it's not a triangle-
 	class NotATriangle(Exception):
 		pass
 
 	def get_theta(k1,k2,k3):
+		"""
+			Function to get angle between two wavevectors
+		"""
 		x = 0.5 * (k3**2 - (k1**2 + k2**2))/(k1 * k2)
 		if x>1 or x<-1:
 			raise NotATriangle()
 		return np.arccos(x)
 
 	def get_mus(MU_1,PHI,k):
+		"""
+			Function to return mu1,mu2,mu3 when given mu1 and phi, and k as dict. Returns dict
+		"""
 		mu = {1:MU_1}
 		mu[2]=mu[1]*np.cos(k["theta"]) + np.sqrt(1.0-mu[1]**2) * np.sin(k["theta"])*np.cos(PHI)
 		mu[3] = - (k[1] / k[3]) * mu[1] - (k[2] / k[3]) * mu[2]
@@ -136,6 +142,9 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False):
 
 
 	def get_cosinus(i,j,k):
+		"""
+			Returns cosine of angle between entry i and entry j of dict k
+		"""
 		perms = [1,2,3]
 		assert i!=j
 		assert i in perms
@@ -149,23 +158,35 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False):
 	#doppler snr: only O(1/k) corrections included
 
 	def E(i,j,l,k):
+		"""
+			Kernel E_2 from paper
+		"""
 		cosinus = get_cosinus(i,j,k)
 		return ((k[i]**2 * k[j]**2) / (k[l]**4) ) * (3 + 2 * cosinus * (k[i]/k[j] + k[j]/k[i]) + cosinus**2  )
 
 	def F(i,j,l,k):
+		"""
+			Kernel F_2 from paper
+		"""
 		cosinus = get_cosinus(i,j,k)
 		return 10/7 + cosinus * (k[i]/k[j] + k[j]/k[i]) + (1 - 3/7) * cosinus**2
 
 	def G(i,j,l,k):
+		"""
+			Kernel G_2 from paper
+		"""
 		cosinus = get_cosinus(i,j,k)
 		return 6/7 + cosinus * (k[i]/k[j] + k[j]/k[i]) + (2 - 6/7) * cosinus**2
 
+
+	#First order Newtonian, GR Fourier space kernels,
 	def KN1(i,mu,B1,f):
 		return B1 + f * mu[i]**2
 
 	def KGR1(i,mu,k,gamma1,gamma2):
 		return (gamma1/k[i])*1j*mu[i]
 
+	#Second order Newtonian, GR Fourier space kernels
 	def KN2(i,j,l,k,mu,B1,B2,f):
 		cosinus = get_cosinus(i,j,k)
 		F_f = F(i,j,l,k)
@@ -201,16 +222,23 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False):
 
 
 	def B_perm(i,j,l,k,mu,B1,B2,gamma1,gamma2,beta,f):
+		"""
+			General form of one of the cyclic permutations. Newtonian is boolean,
+			if set to True this will return purely Newtonian, if False this will 
+			give Doppler H/k 
+		"""
 		if Newtonian:
 			return KN1(i,mu,B1,f) * KN1(j,mu,B1,f) * KN2(i,j,l,k,mu,B1,B2,f) * Pm(i,k) * Pm(j,k)
 		else:
-
 			T1 = KGR1(i,mu,k,gamma1,gamma2) * KN1(j,mu,B1,f) *  KN2(i,j,l,k,mu,B1,B2,f)
 			T2 = KGR1(j,mu,k,gamma1,gamma2) * KN1(i,mu,B1,f) *  KN2(i,j,l,k,mu,B1,B2,f)
 			T3 = KN1(i,mu,B1,f) * KN1(j,mu,B1,f) * KGR2(i,j,l,k,mu,beta)
 			return (T1 + T2 + T3) * Pm(i,k) * Pm(j,k)
 
 	def B_full(k,mu,B1,B2,gamma1,gamma2,beta,f):
+		"""
+			Full bispectrum. FOG can be turned off and on by setting damp to False or True
+		"""
 		if damp:
 			damp_term = np.exp(- (1/2) * (k[1]**2 * mu[1]**2 + k[2]**2 * mu[2]**2 + k[3]**2 * mu[3]**2) * sigma**2)
 		else:
@@ -218,6 +246,10 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False):
 		return  (B_perm(1,2,3,k,mu,B1,B2,gamma1,gamma2,beta,f) + B_perm(1,3,2,k,mu,B1,B2,gamma1,gamma2,beta,f) + B_perm(2,3,1,k,mu,B1,B2,gamma1,gamma2,beta,f)) * damp_term
 
 	def P_twiddle(i,k,mu,B1,f):
+		"""
+			P-twiddle: galaxy power spectrum with noise term. Damping on this can be turned on and off
+			setting damp_on_Ptw to True or False
+		"""
 		if damp_on_Ptw:
 			damp_term = np.exp(- (1/2) * ((k[i] * mu[i] * sigma)**2))
 		else:
@@ -225,9 +257,16 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False):
 		return KN1(i,mu,B1,f)**2 * Pm(i,k) * damp_term  + (1/ng_euclid)
 
 	def P_galaxy(i,k,mu,B1,f):
+		"""
+			P_galaxy: galaxy power spectrum with damping
+		"""
 		return KN1(i,mu,B1,f)**2 * Pm(i,k) *  np.exp(- (1/2) * ((k[i] * mu[i] * sigma)**2))
 
 	def s_B(k):
+		"""
+			s_B takes a dictionary and returns an integer, to take symmetry/overcounting into account
+			in the Var[B]
+		"""
 		if (k[1]==k[2] and k[2]==k[3]):
 			return 6
 		elif (k[1]==k[2] or k[1]==k[3] or k[2]==k[3]):
@@ -237,6 +276,15 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False):
 
 
 	def arr_func(k,mu1,phis):
+		"""
+			this is a function that works with lists/arrays (of k, mu, phi) and quickly returns
+			the SNR^2. 
+			mu : calculates set of mu_i 
+			bisp : calculates full bispectrum
+			varb_num : numerator of Var[B] expression in 1911.02398
+			varb_den : denominator of Var[b] in 1911.02393
+			Square bispectrum, divide by Var[B] = multiply by denominator, divide by numerator. Sum result
+		"""
 		mu = get_mus(mu1,phis,k)
 		bisp = B_full(k,mu,B1,B2,gamma1,gamma2,beta,f)
 		varb_num = np.pi * kf**3 * mu_range * phi_range * P_twiddle(1,k,mu,B1,f) * P_twiddle(2,k,mu,B1,f) * P_twiddle(3,k,mu,B1,f)
@@ -244,6 +292,7 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False):
 		res = (abs(bisp)**2) * varb_den / varb_num
 		return res.sum()
 
+	#set redshift, get power spectrum from CAMB. No non-linear modelling
 	zbin = Z
 	pars.set_matter_power(redshifts=[zbin], kmax=2.0)
 	pars.NonLinear = camb.model.NonLinear_none
@@ -255,7 +304,7 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False):
 	#Pm in Mpc^3 units, at z=Z
 	Pmz  =interp1d(kh*hubble, (pk[0]/pow(hubble,3)))
 
-
+	#Calculate all params at redshift Z
 	Hu = results.h_of_z(Z) * (1/(1 + Z))
 	H0 = results.h_of_z(0)
 	om_m0 = om0
@@ -284,34 +333,39 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False):
 	#sigma = (5.29 - 0.249 * Z - 0.720 * Z**2 + 0.187 * Z**3)#/hubble
 	#ng_euclid =0.0193 * pow(Z, -0.0282) * np.exp(-2.81 * Z) * 1e-3 * hubble**3
 	#v_euclid = 8.85 * pow(Z, 1.65) * np.exp(-0.777 * Z) * 1e9 * (1/(hubble**3))
-
+	#use values from table for sigma, n_g and V_survey
 	sigma = sigma_euclid(Z)
 	ng_euclid = ngt_euclid(Z)
 	v_euclid = vt_euclid(Z)
 
 	#beta coeffs
 	beta = set_beta_coeffs()
+
+	#fundamental mode
 	kf = (2 * np.pi) / pow(v_euclid, 1/3)
+	#step sizs
 	deltamu = 0.04
 	deltaphi = np.pi/25
 	mu_range = 2.0
 	phi_range = 2 * np.pi
 	deltaz = 0.1
 	#n_s from Planck best fit 2018:
-	n_s = 0.9665
+	#n_s = 0.9665
 	kmin = kf
-	kmax = 0.1 * hubble * pow((1 + Z),(2/(2 + n_s)) )  #0.15*hubble
+	kmax = 0.1 * hubble * pow((1 + Z),(2/(2 + nss)) )  #0.15*hubble
 	deltak =  kf
 	mu_bins = np.arange(-1,1,deltamu)
 	phi_bins = np.arange(0,2*np.pi,deltaphi)
 	mu1 = np.tile(mu_bins,(50,1))
 	phis = np.tile(phi_bins,(50,1)).T
 
+	#binning k between kmin and kmax with deltak steps
 	k_bins = np.arange(kmin,kmax,deltak)
+
 	snr=0.0
 
 	klist=[]
-  
+  	#going through the bins, checking triangle conditions, appending valid triangles as dict
 	for k1 in k_bins:
 		for k2 in k_bins[k_bins<=k1]:
 			for k3 in k_bins[k_bins<=k2]: #
@@ -323,33 +377,36 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False):
 						continue
 				else:
 					continue
+	#calculating snr^2 
 	for k in tqdm(klist):
 		snr += arr_func(k,mu1,phis)
-
+	#return snr
 	return np.sqrt(snr)
 
 if __name__ == '__main__':
-
+	"""
+		main: here do the actual work
+		initialise an empty list with some name
+		Z in a Z_range, currently going from 0.7 to 2.0 inclusive 
+		Turn desired effects off or on with the booleans
+	"""
 
 	dop_snrs_nodamp = []
 	dop_snrs_damp = []
 	for Z in np.arange(0.7,2.1,0.1):
 		dop_snrs_nodamp += [get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False)]
 		dop_snrs_damp += [get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=True)]
-		#dop_snrs_damp += [get_SNR_on_Z(Z,damp=True,Newtonian=False)]
 
 
-
+	#plotting here
 	plt.figure(figsize=(8,8))
-	# plt.plot(np.arange(0.7,2.1,0.1),snrs,label='SNR - B')
-	# plt.plot(np.arange(0.7,2.1,0.1),snrs_damp,label='SNR - B - Damped')
-	#plt.plot(np.arange(0.7,2.1,0.1),dop_snrs_damp,label='SNR- damp - B_dop')
+
 	plt.plot(np.arange(0.7,2.1,0.1),dop_snrs_nodamp,label='Dop B SNR -no damp P_twid')
 	plt.plot(np.arange(0.7,2.1,0.1),dop_snrs_damp,label='Dop B SNR -damp P_twid')
 	plt.xlim(0.6,2)
 	#plt.ylim(0,300)
 	plt.legend()
-	plt.savefig("Dop_B_snrs_damps.png")
+	plt.savefig("Dop_B_snrs_damps2.png")
 	
 
 
