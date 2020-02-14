@@ -18,30 +18,39 @@ import camb
 from tqdm import tqdm, trange
 from astropy import constants as const
 
+import math
+
 import matplotlib.pyplot as plt
 
 #Fiducial cosmological parameters: Planck 2018
-c= const.c.value
-hubble=0.6766
-omegab=0.02242*pow(hubble,-2)
-omegac=0.11933*pow(hubble,-2)
-om0= 0.3111  #omegac+omegab
-H00=100*hubble
-Ass=2.14e-9
-nss = 0.9665
-gamma=0.545
+c = const.c.value
+hubble = 0.6781
+omegab = 0.0484
+omegac = 0.2596
+om0 = 0.3111  #omegac+omegab
+H00 = 100*hubble
+Ass = 2.139e-9
+nss = 0.9677
+gamma = 0.545
 
 
 #table of b_e and Q from doppler draft
-euclid_data = np.loadtxt('snr_surveyparams.txt')
+euclid_data = np.loadtxt('yptable.txt')
+
+yp_data = np.loadtxt("YP_snr.dat")
+yp_redshift = yp_data[:,0]
+yp_points = yp_data[:,1]
 
 #the table from the draft  has columns z, b_e, Q, n_g, V, sigma
 z_euclid = euclid_data[:,0]
-be_euclid = interp1d(z_euclid, euclid_data[:,1])
-Q_euclid = interp1d(z_euclid,  euclid_data[:,2])
-ngt_euclid = interp1d(z_euclid,1e-3 * hubble**(3) * euclid_data[:,3])
-vt_euclid = interp1d(z_euclid, 1e9 * (1/hubble**3) *euclid_data[:,4])
-sigma_euclid = interp1d(z_euclid,(1/hubble) *  euclid_data[:,5])
+#be_euclid = interp1d(z_euclid, euclid_data[:,1])
+#Q_euclid = interp1d(z_euclid,  euclid_data[:,2])
+ngt_euclid = interp1d(z_euclid,1e-3 * hubble**(3) * euclid_data[:,2])
+vt_euclid = interp1d(z_euclid, 1e9 * (1/hubble**3) *euclid_data[:,1])
+b1t_euclid = interp1d(z_euclid,euclid_data[:,3])
+b2t_euclid = interp1d(z_euclid, euclid_data[:,4])
+btidalt_euclid = interp1d(z_euclid, euclid_data[:,5])
+sigma_euclid = interp1d(z_euclid,(1/hubble) *  euclid_data[:,8])
 
 #Set up the fiducial cosmology (CAMB)
 pars = camb.CAMBparams()
@@ -304,9 +313,9 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True):
 
 	def set_kmax():
 		if kmax_zdep:
-			return 0.1 * hubble * (1 + Z)**((2/(2 + nss)))
+			return 0.2 * hubble * (1 + Z)**((2/(2 + nss)))
 		else:
-			return 0.15*hubble
+			return 0.15 * hubble
 		
 
 	#set redshift, get power spectrum from CAMB. No non-linear modelling
@@ -333,13 +342,13 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True):
 	chi = results.angular_diameter_distance(Z) * (1 + Z)
 	cap_L = 1
 	partdQ=0
-	B1 = 0.9 + 0.4 * Z
+	B1 = b1t_euclid(Z) # 0.9 + 0.4 * Z
 	db1 = -0.4 * Hu * (1 + Z)
-	B2 = -0.741 - 0.125 * Z + 0.123 * Z**2 + 0.00637 * Z**3
-	b_e = be_euclid(Z)
+	B2 = b2t_euclid(Z) #-0.741 - 0.125 * Z + 0.123 * Z**2 + 0.00637 * Z**3
+	b_e = 0#be_euclid(Z)
 	db_e=0
-	bs = 0.0409 - 0.199 * Z - 0.0166 * Z**2 + 0.00268 * Z**3
-	Q = Q_euclid(Z)
+	bs = btidalt_euclid(Z) #0.0409 - 0.199 * Z - 0.0166 * Z**2 + 0.00268 * Z**3
+	Q = 0#Q_euclid(Z)
 	dQ= 0
 	gamma1 = Hu* (f * (b_e - 2*Q -(2*(1-Q)/(chi*Hu)) - (dHu/Hu**2)))
 	gamma2 = Hu**2 * (f*(3-b_e) + (3/2)*om_m*(2+b_e - f- 4*Q - (2*(1-Q)/(chi*Hu)) - (dHu/Hu**2) ))
@@ -386,14 +395,17 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True):
 	for k1 in k_bins:
 		for k2 in k_bins[k_bins<=k1]:
 			for k3 in k_bins[k_bins<=k2]: #
-				if k3 >= abs(k1-k2):
+				if k3 >= abs(k1-k2) and k1>=k2>=k3:
 					try:
-						k = {1:k1, 2:k2, 3:k3, "theta":get_theta(k1,k2,k3)} 
-						klist.append(k)
+						if math.isclose(get_theta(k1,k2,k3)+get_theta(k1,k3,k2)+get_theta(k2,k3,k1), 2*np.pi, abs_tol=1e-8):
+							k = {1:k1, 2:k2, 3:k3, "theta":get_theta(k1,k2,k3)} 
+							klist.append(k)
 					except NotATriangle:
 						continue
 				else:
 					continue
+	
+
 	#calculating snr^2 
 	for k in tqdm(klist):
 		snr += arr_func(k,mu1,phis)
@@ -408,22 +420,24 @@ if __name__ == '__main__':
 		Turn desired effects off or on with the booleans
 	"""
 
-	dop_snrs_zdepkmax = []
-	dop_snrs_fixedkmax = []
+	newt_snrs = []
+	#dop_snrs_fixedkmax = []
 	for Z in np.arange(0.7,2.1,0.1):
-		dop_snrs_zdepkmax += [get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True)]
-		dop_snrs_fixedkmax += [get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=False)]
+		newt_snrs += [get_SNR_on_Z(Z,damp=True,Newtonian=True,damp_on_Ptw=False,kmax_zdep=False)]
+		#dop_snrs_fixedkmax += [get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=False)]
 
-
+	#sn = get_SNR_on_Z(0.7, damp=True, Newtonian=False, damp_on_Ptw=False, kmax_zdep=True)
+	
 	#plotting here
 	plt.figure(figsize=(8,8))
-
-	plt.plot(np.arange(0.7,2.1,0.1),dop_snrs_zdepkmax,label='Dop B SNR - z dep k_max')
-	plt.plot(np.arange(0.7,2.1,0.1),dop_snrs_fixedkmax,label='Dop B SNR - fixed k_max')
+	plt.plot(yp_redshift,yp_points,label="Y&P")
+	plt.plot(np.arange(0.7,2.1,0.1),newt_snrs,label="emw")
+	#plt.plot(np.arange(0.7,2.1,0.1),dop_snrs_zdepkmax,label='Dop B SNR - z dep k_max')
+	#plt.plot(np.arange(0.7,2.1,0.1),dop_snrs_fixedkmax,label='Dop B SNR - fixed k_max')
 	plt.xlim(0.6,2)
-	#plt.ylim(0,300)
+	plt.ylim(0,300)
 	plt.legend()
-	plt.savefig("Dop_B_snrs_kmaxeff.png")
+	plt.savefig("YP_newt.png")
 	
 
 
