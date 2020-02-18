@@ -447,10 +447,23 @@ if __name__ == '__main__':
 	 	snrs += [get_SNR_on_Z(Z,damp=True,Newtonian=True,damp_on_Ptw=False,kmax_zdep=False)]
 	# # 	dop_snrs_fixedkmax += [get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=False)]
 	
+	#write to file
+
+	zrange = np.arange(0.7,2.1,0.1)
+	data = np.array([zrange,snrs])
+	data = data.T
+
+	filename = "newt_snrs_planck2015.txt" 
+
+	with open(filename, 'w+') as datafile_id:
+
+		np.savetxt(datafile_id, data, fmt=['%.1f','%.8f'], header="z \t Newt B SNR")
+	
+
 	# #plotting here
-	plt.figure(figsize=(8,8))
-	plt.plot(np.arange(0.7,2.1,0.1),snrs,label="EMW N B SNR")
-	plt.plot(py_z,py_b,label="Y&P N B SNR")
+	#plt.figure(figsize=(8,8))
+	plt.plot(np.arange(0.7,2.1,0.1),snrs,marker='o',label="EMW N B SNR")
+	plt.plot(py_z,py_b,marker='o',label="Y&P N B SNR")
 	# # plt.plot(np.arange(0.7,2.1,0.1),dop_snrs_fixedkmax,label='Dop B SNR - fixed k_max')
 	plt.xlim(0.6,2)
 	# # #plt.ylim(0,300)
