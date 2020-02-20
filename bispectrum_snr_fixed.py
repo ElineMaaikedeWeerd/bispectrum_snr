@@ -399,25 +399,23 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True):
 	phis = np.tile(phi_bins,(50,1)).T
 
 	#binning k between kmin and kmax with deltak steps
-	k_bins = np.arange(kmin,kmax,deltak)
+	k_bins = np.arange(kmin,kmax+deltak,deltak)
 
 	snr=0.0
 
 	klist=[]
 	#going through the bins, checking triangle conditions, appending valid triangles as dict
 
-	for k1 in k_bins:
+	for k1 in k_bins[k_bins<=kmax]:
 		for k2 in k_bins[k_bins<=k1]:
 			for k3 in k_bins[k_bins<=k2]:  #np.arange(max(kmin,abs(k1-k2)),k2+deltak,deltak): #
 				if (k1 - k2 - k3 <= 1e-8):
 					# if (math.isclose(abs(get_costheta(k1,k2,k3)),1,abs_tol=1e-8) or math.isclose(abs(get_costheta(k1,k3,k2)),1,abs_tol=1e-8) or math.isclose(abs(get_costheta(k2,k3,k1)),1,abs_tol=1e-8)):
 					# 	continue
 					# else:
-						k = {1:k1, 2:k2, 3:k3, "costheta":get_costheta(k1,k2,k3)} 
-						klist.append(k)
+					k = {1:k1, 2:k2, 3:k3, "costheta":get_costheta(k1,k2,k3)} 
+					klist.append(k)
 
-
-	print(k_bins)
 
 	#calculating snr^2 
 	for k in tqdm(klist):
@@ -433,35 +431,34 @@ if __name__ == '__main__':
 		Turn desired effects off or on with the booleans
 	"""
 
-	#snrs = []
+
 	snrs = []
-	# snrs_fixedk = []
+	snrs_fixedk = []
 	for Z in np.arange(0.7,2.1,0.1):
-	 	#snrs += [get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True)]
-	 	snrs += [get_SNR_on_Z(Z,damp=True,Newtonian=True,damp_on_Ptw=False,kmax_zdep=False)]
-	 	# snrs_fixedk += [get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=False)]
+	 	snrs += [get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True)]
+	 	snrs_fixedk += [get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=False)]
 
 
-	# # #let's write this to a file
+	# #let's write this to a file
 
-	# zrange = np.arange(0.7,2.1,0.1)
-	# data = np.array([zrange,snrs,snrs_fixedk])
-	# data = data.T 
-	# txtfile_name = "doppler.txt"
-	# with open(txtfile_name, 'w+') as datafile_id:
+	zrange = np.arange(0.7,2.1,0.1)
+	data = np.array([zrange,snrs,snrs_fixedk])
+	data = data.T 
+	txtfile_name = "doppler_data.txt"
+	with open(txtfile_name, 'w+') as datafile_id:
 
-	# 	np.savetxt(datafile_id, data, fmt=['%.1f','%.8f','%.8f'], header="z \t B D zdep kmax \t B D fixed kmax")
+		np.savetxt(datafile_id, data, fmt=['%.1f','%.8f','%.8f'], header="z \t D SNR zdep kmax \t D SNR fixed kmax")
 	
-	# # #plotting here
-	# plt.figure(figsize=(8,8))
-	# #plt.plot(np.arange(0.7,2.1,0.1),snrs,label="D B SNR - z dep k_max",marker='o')
-	# #plt.plot(py_z,py_b,label="Y&P SNR")
-	# plt.plot(np.arange(0.7,2.1,0.1),snrs,label='D B SNR zdep kmax',marker='o')
-	# plt.plot(np.arange(0.7,2.1,0.1),snrs_fixedk,label='D B SNR fixed kmax',marker='o')
-	# plt.xlim(0.6,2)
-	# # # #plt.ylim(0,300)
-	# plt.legend()
-	# plt.savefig("doppler_snr.png")
+	# #plotting here
+	plt.figure(figsize=(8,8))
+	#plt.plot(np.arange(0.7,2.1,0.1),snrs,label="D B SNR - z dep k_max",marker='o')
+	#plt.plot(py_z,py_b,label="Y&P SNR")
+	plt.plot(np.arange(0.7,2.1,0.1),snrs,label='D B SNR zdep kmax',marker='o')
+	plt.plot(np.arange(0.7,2.1,0.1),snrs_fixedk,label='D B SNR fixed kmax',marker='o')
+	plt.xlim(0.6,2)
+	# # #plt.ylim(0,300)
+	plt.legend()
+	plt.savefig("doppler_fuckingfinally.png")
 
 	
 	

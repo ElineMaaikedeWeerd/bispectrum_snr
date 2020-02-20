@@ -410,7 +410,7 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True):
 	phis = np.tile(phi_bins,(50,1)).T
 
 	#binning k between kmin and kmax with deltak steps
-	k_bins = np.arange(kmin,kmax+deltak,deltak)
+	k_bins = np.arange(kmin,kmax,deltak)
 
 	snr = 0.0
 
