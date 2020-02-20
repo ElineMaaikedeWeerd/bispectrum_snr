@@ -167,7 +167,7 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True):
 			Function to get angle between two wavevectors
 		"""
 		x = 0.5 * (k3**2 - (k1**2 + k2**2))/(k1 * k2)
-		if x>=1 or x<=-1:
+		if x>1 or x<-1:
 			raise NotATriangle()
 		return np.arccos(x)
 
@@ -409,23 +409,39 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True):
 	#binning k between kmin and kmax with deltak steps
 	k_bins = np.arange(kmin,kmax+deltak,deltak)
 
-	snr=0.0
+	snr = 0.0
 
 	klist=[]
+
 	#going through the bins, checking triangle conditions, appending valid triangles as dict
+
+	# for k1 in k_bins:
+	# for k2 in k_bins[k_bins<=k1]:
+	# 	for k3 in np.arange(max(kmin,abs(k1-k2)),k2+deltak,deltak): #
+	# 		if k1>=k2>=k3:
+	# 			try:
+	# 				if math.isclose(get_theta(k1,k2,k3)+get_theta(k1,k3,k2)+get_theta(k2,k3,k1), 2*np.pi, abs_tol=1e-8):
+	# 					k = {1:k1, 2:k2, 3:k3, "theta":get_theta(k1,k2,k3)} 
+	# 					klist.append(k)
+	# 			except NotATriangle:
+	# 				continue
+	# 		else:
+	# 			continue
 
 	for k1 in k_bins:
 		for k2 in k_bins[k_bins<=k1]:
-			for k3 in np.arange(max(kmin,abs(k1-k2)),k2+deltak,deltak): #
-				if k1>=k2>=k3:
-					try:
-						if math.isclose(get_theta(k1,k2,k3)+get_theta(k1,k3,k2)+get_theta(k2,k3,k1), 2*np.pi, abs_tol=1e-8):
-							k = {1:k1, 2:k2, 3:k3, "theta":get_theta(k1,k2,k3)} 
-							klist.append(k)
-					except NotATriangle:
-						continue
-				else:
+			for k3 in k_bins[k_bins<=k2]:  #np.arange(max(kmin,abs(k1-k2)),k2+deltak,deltak): #
+				#if k1>=k2>=k3:
+				try:
+					if (k1 - k2 - k3 <= 1e-8):
+					#if math.isclose(get_theta(k1,k2,k3)+get_theta(k1,k3,k2)+get_theta(k2,k3,k1), 2*np.pi, abs_tol=1e-8):
+						k = {1:k1, 2:k2, 3:k3, "theta":get_theta(k1,k2,k3)} 
+						klist.append(k)
+				except NotATriangle:
 					continue
+			else:
+				continue
+
 
 	#calculating snr^2 
 	for k in tqdm(klist):
@@ -442,9 +458,11 @@ if __name__ == '__main__':
 	"""
 
 	snrs = []
+
 	# # dop_snrs_fixedkmax = []
 	for Z in np.arange(0.7,2.1,0.1):
 	 	snrs += [get_SNR_on_Z(Z,damp=True,Newtonian=True,damp_on_Ptw=False,kmax_zdep=False)]
+
 	# # 	dop_snrs_fixedkmax += [get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=False)]
 	
 	#write to file
@@ -453,22 +471,22 @@ if __name__ == '__main__':
 	data = np.array([zrange,snrs])
 	data = data.T
 
-	filename = "newt_snrs_planck2015.txt" 
+	filename = "newt_snrs_1compare.txt" 
 
 	with open(filename, 'w+') as datafile_id:
 
 		np.savetxt(datafile_id, data, fmt=['%.1f','%.8f'], header="z \t Newt B SNR")
 	
 
-	# #plotting here
-	#plt.figure(figsize=(8,8))
-	plt.plot(np.arange(0.7,2.1,0.1),snrs,marker='o',label="EMW N B SNR")
-	plt.plot(py_z,py_b,marker='o',label="Y&P N B SNR")
-	# # plt.plot(np.arange(0.7,2.1,0.1),dop_snrs_fixedkmax,label='Dop B SNR - fixed k_max')
-	plt.xlim(0.6,2)
-	# # #plt.ylim(0,300)
-	plt.legend()
-	plt.savefig("newt_b_snr_ypcomparison_exclflat.png")
+	# # #plotting here
+	# #plt.figure(figsize=(8,8))
+	# plt.plot(np.arange(0.7,2.1,0.1),snrs,marker='o',label="EMW N B SNR")
+	# plt.plot(py_z,py_b,marker='o',label="Y&P N B SNR")
+	# # # plt.plot(np.arange(0.7,2.1,0.1),dop_snrs_fixedkmax,label='Dop B SNR - fixed k_max')
+	# plt.xlim(0.6,2)
+	# # # #plt.ylim(0,300)
+	# plt.legend()
+	# plt.savefig("newt_b_snr_ypcomparison_v2.png")
 
 	
 	

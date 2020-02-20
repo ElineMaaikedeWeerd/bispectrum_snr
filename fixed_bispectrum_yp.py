@@ -22,30 +22,59 @@ import math
 
 import matplotlib.pyplot as plt
 
+#speed of light
+
+c= const.c.value
+
 #Fiducial cosmological parameters: Planck 2018
-c = const.c.value
-hubble = 0.6766
-omegab = 0.02242 * hubble**-2 
-omegac = 0.11933 * hubble**-2 
-om0 = 0.3111  #omegac+omegab
+# hubble=0.6766
+# omegab=0.02242*pow(hubble,-2)
+# omegac=0.11933*pow(hubble,-2)
+# om0= 0.3111  #omegac+omegab
+# H00=100*hubble
+# Ass=2.14e-9
+# nss = 0.9665
+# gamma=0.545
+
+#planck 2015:
+hubble = 0.6781
+omegab = 0.0484
+omegac = 0.2596
+om0 = omegab + omegac
 H00 = 100 * hubble
 Ass = 2.139e-9
-nss = 0.9665
+nss = 0.9677
 gamma = 0.545
 
 
-
-
 #table of b_e and Q from doppler draft
-euclid_data = np.loadtxt('snr_surveyparams.txt')
+# euclid_data = np.loadtxt('snr_surveyparams.txt')
 
-#the table from the draft  has columns z, b_e, Q, n_g, V, sigma
-z_euclid = euclid_data[:,0]
-be_euclid = interp1d(z_euclid, euclid_data[:,1])
-Q_euclid = interp1d(z_euclid,  euclid_data[:,2])
-ngt_euclid = interp1d(z_euclid,1e-3 * euclid_data[:,3])
-vt_euclid = interp1d(z_euclid, 1e9 * euclid_data[:,4])
-sigma_euclid = interp1d(z_euclid, euclid_data[:,5])
+# #the table from the draft  has columns z, b_e, Q, n_g, V, sigma
+# z_euclid = euclid_data[:,0]
+# be_euclid = interp1d(z_euclid, euclid_data[:,1])
+# Q_euclid = interp1d(z_euclid,  euclid_data[:,2])
+# ngt_euclid = interp1d(z_euclid,1e-3 * euclid_data[:,3])
+# vt_euclid = interp1d(z_euclid, 1e9 * euclid_data[:,4])
+# sigma_euclid = interp1d(z_euclid, euclid_data[:,5])
+
+#YP table
+py_table = np.loadtxt("yptable.txt")
+z_euclid = py_table[:,0]
+vt_euclid = interp1d(z_euclid, 1e9 * py_table[:,1])
+ngt_euclid = interp1d(z_euclid, 1e-3 * py_table[:,2])
+b1t_euclid = interp1d(z_euclid, py_table[:,3])
+b2t_euclid = interp1d(z_euclid, py_table[:,4])
+bst_euclid = interp1d(z_euclid,py_table[:,5])
+sigma_euclid = interp1d(z_euclid,py_table[:,8])
+
+yp_data = np.loadtxt("yp_datapoints.txt")
+yp_z = yp_data[:,0]
+yp_b = yp_data[:,2]
+
+
+
+
 
 #Set up the fiducial cosmology (CAMB)
 pars = camb.CAMBparams()
@@ -81,8 +110,8 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True):
 		return np.exp(-ans)
 
 	#Power spectrum as fn of z (alternative way of computing it- slower?)
-	# def Pm_at_z(kk,zc):
-	#    return Dgz(zc)**2 * Pmz0(kk)
+	#def Pmz(kk,zc):
+	#    return pow(Dgz(zc),2)*Pmz0(kk)
 
 
 	def set_beta_coeffs():
@@ -115,7 +144,7 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True):
 
 
 
-	#power spectrum at redshift Z for dictionary element k[i]
+	#power spectrum at redshift Z
 	def Pm(i,k):
 		kk = k[i]
 		return Pmz(kk)
@@ -140,17 +169,17 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True):
 		"""
 			Function to get angle between two wavevectors
 		"""
-		x = 0.5 * (k3**2 - (k1**2 + k2**2))/(k1 * k2)
-		if x>1 or x<-1:
-			raise NotATriangle()
-		return np.arccos(x)
+		x =  0.5 * ( k3**2 - (k1**2 + k2**2))/(k1 * k2)
+		# if x>1 or x<-1:
+		# 	raise NotATriangle()
+		return x #np.arccos(x)
 
 	def get_mus(MU_1,PHI,k):
 		"""
 			Function to return mu1,mu2,mu3 when given mu1 and phi, and k as dict. Returns dict
 		"""
 		mu = {1:MU_1}
-		mu[2]=mu[1]*np.cos(k["theta"]) + np.sqrt(1.0-mu[1]**2) * np.sin(k["theta"])*np.cos(PHI)
+		mu[2]=mu[1]*(k["theta"]) + np.sqrt(1.0-mu[1]**2) * np.sqrt(abs(1 - (k["theta"])**2)) *np.cos(PHI)
 		mu[3] = - (k[1] / k[3]) * mu[1] - (k[2] / k[3]) * mu[2]
 		return mu
 
@@ -276,26 +305,14 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True):
 		"""
 		return KN1(i,mu,B1,f)**2 * Pm(i,k) *  np.exp(- (1/2) * ((k[i] * mu[i] * sigma)**2))
 
-	# def s_B(k):
-	# 	"""
-	# 		s_B takes a dictionary and returns an integer, to take symmetry/overcounting into account
-	# 		in the Var[B]
-	# 	"""
-	# 	if (k[1]==k[2] and k[2]==k[3]):
-	# 		return 6
-	# 	elif (k[1]==k[2] or k[1]==k[3] or k[2]==k[3]):
-	# 		return 2
-	# 	else:
-	# 		return 1
-
 	def s_B(k):
 		"""
 			s_B takes a dictionary and returns an integer, to take symmetry/overcounting into account
 			in the Var[B]
 		"""
-		if (math.isclose(k[1],k[2],1e-8) and math.isclose(k[2],k[3],1e-8)):
+		if (k[1]==k[2] and k[2]==k[3]):
 			return 6
-		elif (math.isclose(k[1],k[2],1e-8) or math.isclose(k[1],k[3],1e-8) or math.isclose(k[2],k[3],1e-8)):
+		elif (k[1]==k[2] or k[1]==k[3] or k[2]==k[3]):
 			return 2
 		else:
 			return 1
@@ -328,16 +345,14 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True):
 	#set redshift, get power spectrum from CAMB. No non-linear modelling
 	zbin = Z
 	pars.set_matter_power(redshifts=[zbin], kmax=2.0)
-	pars.NonLinear = camb.model.NonLinear_both
+	pars.NonLinear = camb.model.NonLinear_none
 
 	results = camb.get_results(pars)
 	kh, z, pk = results.get_matter_power_spectrum(minkh=1e-4, maxkh=2.0, npoints = 10000)
 	s8 = np.array(results.get_sigma8())
 
 	#Pm in, at z=Z
-	Pmz = interp1d(kh, (pk[0]))
-
-
+	Pmz  =interp1d(kh, (pk[0]))
 
 	#Calculate all params at redshift Z
 	Hu = results.h_of_z(Z) * (1/(1 + Z))
@@ -351,13 +366,13 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True):
 	chi = results.angular_diameter_distance(Z) * (1 + Z)
 	cap_L = 1
 	partdQ=0
-	B1 =  0.9 + 0.4 * Z
+	B1 = b1t_euclid(Z) #0.9 + 0.4 * Z
 	db1 = -0.4 * Hu * (1 + Z)
-	B2 = -0.741 - 0.125 * Z + 0.123 * Z**2 + 0.00637 * Z**3
-	b_e = be_euclid(Z)
+	B2 = b2t_euclid(Z) # -0.741 - 0.125 * Z + 0.123 * Z**2 + 0.00637 * Z**3
+	b_e = 0 #be_euclid(Z)
 	db_e=0
-	bs = 0.0409 - 0.199 * Z - 0.0166 * Z**2 + 0.00268 * Z**3
-	Q = Q_euclid(Z)
+	bs = bst_euclid(Z) # 0.0409 - 0.199 * Z - 0.0166 * Z**2 + 0.00268 * Z**3
+	Q = 0 #Q_euclid(Z)
 	dQ= 0
 	gamma1 = Hu* (f * (b_e - 2*Q -(2*(1-Q)/(chi*Hu)) - (dHu/Hu**2)))
 	gamma2 = Hu**2 * (f*(3-b_e) + (3/2)*om_m*(2+b_e - f- 4*Q - (2*(1-Q)/(chi*Hu)) - (dHu/Hu**2) ))
@@ -377,7 +392,7 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True):
 	beta = set_beta_coeffs()
 
 	#fundamental mode
-	kf = (2 * np.pi) / pow(v_euclid, 1/3)
+	kf = (2 * np.pi) / (v_euclid ** (1/3))
 	#step sizs
 	deltamu = 0.04
 	deltaphi = np.pi/25
@@ -397,33 +412,41 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True):
 	#binning k between kmin and kmax with deltak steps
 	k_bins = np.arange(kmin,kmax+deltak,deltak)
 
-	snr=0.0
+	snr = 0.0
 
 	klist=[]
+
 	#going through the bins, checking triangle conditions, appending valid triangles as dict
+
+	#old way of looping through triangles
+	# for k1 in k_bins:
+	# 	for k2 in k_bins[k_bins<=k1]:
+	# 		for k3 in np.arange(max(kmin,abs(k1-k2)),k2+deltak,deltak): #
+	# 			if k1>=k2>=k3:
+	# 				try:
+	# 					if math.isclose(get_theta(k1,k2,k3)+get_theta(k1,k3,k2)+get_theta(k2,k3,k1), 2*np.pi, abs_tol=1e-8):
+	# 						k = {1:k1, 2:k2, 3:k3, "theta":get_theta(k1,k2,k3)} 
+	# 						klist.append(k)
+	# 				except NotATriangle:
+	# 					continue
+	# 			else:
+	# 				continue
 
 	for k1 in k_bins:
 		for k2 in k_bins[k_bins<=k1]:
-			for k3 in np.arange(max(kmin,abs(k1-k2)),k2+deltak,deltak): #
-				if k1>=k2>=k3:
-					try:
-						if math.isclose(get_theta(k1,k2,k3)+get_theta(k1,k3,k2)+get_theta(k2,k3,k1), 2*np.pi, abs_tol=1e-8):
-							k = {1:k1, 2:k2, 3:k3, "theta":get_theta(k1,k2,k3)} 
-							klist.append(k)
-					except NotATriangle:
-						continue
-				else:
+			for k3 in k_bins[k_bins<=k2]: 
+				try:
+					if (k1 - k2 - k3 <= 1e-8):
+						k = {1:k1, 2:k2, 3:k3, "theta":get_theta(k1,k2,k3)} 
+						klist.append(k)
+				except NotATriangle:
 					continue
+			else:
+				continue
 
-
-	#stupid print statements for debugging
-	# for i in range(0,5):
-	# 	print(klist[i])
-	# print("P(kmin): ","\t",Pmz(kmin))
-	# print("f: \t", f)
-	# for i in range(1,20):
-	# 	print("beta",i,"\t",beta[i])
-
+	# print(len(k_bins))
+	# print(k_bins)
+	print(v_euclid)
 
 	#calculating snr^2 
 	for k in tqdm(klist):
@@ -440,34 +463,39 @@ if __name__ == '__main__':
 	"""
 
 	snrs = []
-	#dop_snrs_fixedkmax = []
+
+	# # dop_snrs_fixedkmax = []
 	for Z in np.arange(0.7,2.1,0.1):
-	 	snrs += [get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=False)]
-	 	#dop_snrs_fixedkmax += [get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=False)]
+	 	snrs += [get_SNR_on_Z(Z,damp=True,Newtonian=True,damp_on_Ptw=False,kmax_zdep=False)]
 
-
-	#let's write this to a file
+	# # 	dop_snrs_fixedkmax += [get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=False)]
+	
+	#write to file
 
 	zrange = np.arange(0.7,2.1,0.1)
 	data = np.array([zrange,snrs])
-	data = data.T 
-	txtfile_name = "doppler_fixed_kmax.txt"
-	with open(txtfile_name, 'w+') as datafile_id:
+	data = data.T
 
-		np.savetxt(datafile_id, data, fmt=['%.1f','%.8f'], header="z \t B SNR fixed kmax")
+	filename = "newt_snrs_2compare.txt" 
+
+	with open(filename, 'w+') as datafile_id:
+
+		np.savetxt(datafile_id, data, fmt=['%.1f','%.8f'], header="z \t Newt B SNR")
 	
+
 	# #plotting here
-	plt.figure(figsize=(8,8))
-	plt.plot(np.arange(0.7,2.1,0.1),snrs,label="D B SNR - z dep k_max")
-	#plt.plot(py_z,py_b,label="Y&P SNR")
-	#plt.plot(np.arange(0.7,2.1,0.1),dop_snrs_fixedkmax,label='D B SNR - fixed k_max')
+	#plt.figure(figsize=(8,8))
+	plt.plot(np.arange(0.7,2.1,0.1),snrs,marker='o',label="EMW N B SNR")
+	plt.plot(yp_z,yp_b,marker='o',label="Y&P N B SNR")
+	# # plt.plot(np.arange(0.7,2.1,0.1),dop_snrs_fixedkmax,label='Dop B SNR - fixed k_max')
 	plt.xlim(0.6,2)
 	# # #plt.ylim(0,300)
 	plt.legend()
-	plt.savefig("v2_doppler.png")
+	plt.savefig("newt_bispectrum.png")
 
 	
 	
+
 
 
 
