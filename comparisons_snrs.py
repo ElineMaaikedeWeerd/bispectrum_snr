@@ -23,13 +23,9 @@ import matplotlib.pyplot as plt
 
 #Y&P data:
 
-py_data = np.loadtxt("vikastable.txt")
-py_z = py_data[:,0]
-py_b = py_data[:,2]
-
 #EMW data:
 
-emw_data = np.loadtxt("newt_snrs_planck2015.txt")
+emw_data = np.loadtxt("newt_snrs_2compare.txt")
 emw_z = emw_data[:,0]
 emw_b = emw_data[:,1]
 
@@ -37,21 +33,21 @@ emw_b = emw_data[:,1]
 
 #SJ data
 
-sj_data = np.loadtxt("snr_Euclid_FOG_YP_kmax_0.15h.dat")
+sj_data = np.loadtxt("snr11_Euclid_FOG_YP_kmax_0.15h.dat")
 sj_z = sj_data[:,0]
 sj_b = sj_data[:,1]
 
 #calculate error
 
-emw_rpe = ( (py_b - emw_b) / py_b ) * 100
-sj_rpe = ( (py_b - sj_b) / py_b) * 100
+emw_rpe = ( (sj_b - emw_b) / sj_b ) * 100
+# sj_rpe = ( (py_b - sj_b) / py_b) * 100
 
 ## plotting ##
 
 #plt.figure(figsize=(8,8))
-plt.plot(emw_z, emw_rpe, label = "EMW",marker='o')
-plt.plot(sj_z, sj_rpe, label= "SJ", marker='o')
-plt.ylabel("[(PY-us)/PY] * 100")
+plt.plot(emw_z, emw_rpe, marker='o')
+# plt.plot(sj_z, sj_rpe, label= "SJ", marker='o')
+# plt.ylabel("[(PY-us)/PY] * 100")
 plt.xlabel("z")
-plt.legend()
-plt.savefig("newt_excl.png")
+# plt.legend()
+plt.savefig("compare_se.png")

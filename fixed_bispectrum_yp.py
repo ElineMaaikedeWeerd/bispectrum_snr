@@ -37,10 +37,10 @@ c= const.c.value
 # gamma=0.545
 
 #planck 2015:
-hubble = 0.6781
-omegab = 0.0484
-omegac = 0.2596
-om0 = omegab + omegac
+hubble = 0.6780
+omegab = 0.02226 / hubble**2 
+omegac = 0.1186 / hubble**2
+om0 = 0.308 #omegab + omegac
 H00 = 100 * hubble
 Ass = 2.139e-9
 nss = 0.9677
@@ -85,6 +85,15 @@ pars.set_for_lmax(2500, lens_potential_accuracy=0);
 
 
 background = camb.get_background(pars)
+
+power_data = np.loadtxt("bispectrum_inputs_linmatterpower.dat")
+Pmz0 = interp1d(power_data[:,0],power_data[:,1])
+
+growtf_data = np.loadtxt("bispectrum_inputs_growthfactor.dat")
+growthf = interp1d(growtf_data[:,0],growtf_data[:,1])
+
+growthr_data = np.loadtxt("bispectrum_inputs_growthrate.dat")
+growthrate = interp1d(growthr_data[:,0],growthr_data[:,1])
 
 #this is a fn that will get the SNR for some Z- really this should be a class! tbc 
 def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True):
@@ -165,7 +174,7 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True):
 	class NotATriangle(Exception):
 		pass
 
-	def get_theta(k1,k2,k3):
+	def get_costheta(k1,k2,k3):
 		"""
 			Function to get angle between two wavevectors
 		"""
@@ -179,7 +188,7 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True):
 			Function to return mu1,mu2,mu3 when given mu1 and phi, and k as dict. Returns dict
 		"""
 		mu = {1:MU_1}
-		mu[2]=mu[1]*(k["theta"]) + np.sqrt(1.0-mu[1]**2) * np.sqrt(abs(1 - (k["theta"])**2)) *np.cos(PHI)
+		mu[2]=mu[1]*(k["costheta"]) + np.sqrt(1.0-mu[1]**2) * np.sqrt(abs(1 - (k["costheta"])**2)) *np.cos(PHI)
 		mu[3] = - (k[1] / k[3]) * mu[1] - (k[2] / k[3]) * mu[2]
 		return mu
 
@@ -310,9 +319,9 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True):
 			s_B takes a dictionary and returns an integer, to take symmetry/overcounting into account
 			in the Var[B]
 		"""
-		if (k[1]==k[2] and k[2]==k[3]):
+		if (math.isclose(k[1],k[2],1e-8) and math.isclose(k[2],k[3],1e-8)):
 			return 6
-		elif (k[1]==k[2] or k[1]==k[3] or k[2]==k[3]):
+		elif (math.isclose(k[1],k[2],1e-8) or math.isclose(k[1],k[3],1e-8) or math.isclose(k[2],k[3],1e-8)):
 			return 2
 		else:
 			return 1
@@ -332,7 +341,7 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True):
 		bisp = B_full(k,mu,B1,B2,gamma1,gamma2,beta,f)
 		varb_num = np.pi * kf**3 * mu_range * phi_range * P_twiddle(1,k,mu,B1,f) * P_twiddle(2,k,mu,B1,f) * P_twiddle(3,k,mu,B1,f)
 		varb_den = k[1] * k[2] * k[3] * (deltak)**3 * deltamu * deltaphi
-		res = (abs(bisp)**2) * varb_den / varb_num
+		res = bisp #(abs(bisp)**2) * varb_den / varb_num
 		return res.sum()
 
 	def set_kmax():
@@ -352,25 +361,32 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True):
 	s8 = np.array(results.get_sigma8())
 
 	#Pm in, at z=Z
-	Pmz  =interp1d(kh, (pk[0]))
+	# Pmz  =interp1d(kh, (pk[0]))
+
+		#power spectrum at redshift Z
+	def Pm(i,k):
+		kk = k[i]
+		return growthf(Z)**2 * Pmz0(kk)
+
+
 
 	#Calculate all params at redshift Z
 	Hu = results.h_of_z(Z) * (1/(1 + Z))
 	H0 = results.h_of_z(0)
 	om_m0 = om0
 	om_m = om_m0 * (H0**2/Hu**2) *(1+Z)
-	f = get_growth(Z)
+	f = growthrate(Z)  #get_growth(Z)
 	df = Hu* ((1/2)*(3*om_m -4)*f - f**2 + (3/2)*om_m)
 	dHu = H0**2 * (-(1/2)* (1+Z) * om_m0 + (1/(1+Z))**2 * (1-om_m0))
 	ddHu = H0**2 * ( (1/2)*Hu*(1+Z)*om_m0 + (1/(1+Z))**2 * 2 * Hu * (1-om_m0) )
 	chi = results.angular_diameter_distance(Z) * (1 + Z)
 	cap_L = 1
-	partdQ=0
+	partdQ = 0
 	B1 = b1t_euclid(Z) #0.9 + 0.4 * Z
 	db1 = -0.4 * Hu * (1 + Z)
 	B2 = b2t_euclid(Z) # -0.741 - 0.125 * Z + 0.123 * Z**2 + 0.00637 * Z**3
 	b_e = 0 #be_euclid(Z)
-	db_e=0
+	db_e = 0
 	bs = bst_euclid(Z) # 0.0409 - 0.199 * Z - 0.0166 * Z**2 + 0.00268 * Z**3
 	Q = 0 #Q_euclid(Z)
 	dQ= 0
@@ -410,7 +426,7 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True):
 	phis = np.tile(phi_bins,(50,1)).T
 
 	#binning k between kmin and kmax with deltak steps
-	k_bins = np.arange(kmin,kmax,deltak)
+	k_bins = np.arange(kmin,kmax+deltak,deltak)
 
 	snr = 0.0
 
@@ -434,19 +450,20 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True):
 
 	for k1 in k_bins:
 		for k2 in k_bins[k_bins<=k1]:
-			for k3 in k_bins[k_bins<=k2]: 
-				try:
-					if (k1 - k2 - k3 <= 1e-8):
-						k = {1:k1, 2:k2, 3:k3, "theta":get_theta(k1,k2,k3)} 
-						klist.append(k)
-				except NotATriangle:
-					continue
-			else:
-				continue
+			for k3 in k_bins[k_bins<=k2]:  #np.arange(max(kmin,abs(k1-k2)),k2+deltak,deltak): #
+				if (k1 - k2 - k3 <= 1e-8):
+					# if (math.isclose(abs(get_costheta(k1,k2,k3)),1,abs_tol=1e-8)): # or math.isclose(abs(get_costheta(k1,k3,k2)),1,abs_tol=1e-8) or math.isclose(abs(get_costheta(k2,k3,k1)),1,abs_tol=1e-8)):
+					# 	continue
+					# else:
+					k = {1:k1, 2:k2, 3:k3, "costheta":get_costheta(k1,k2,k3)} 
+					klist.append(k)
 
-	# print(len(k_bins))
-	# print(k_bins)
-	print(v_euclid)
+
+	print(klist[:5])
+
+	print(arr_func(klist[0],mu1,phis))
+	print(arr_func(klist[1],mu1,phis))
+
 
 	#calculating snr^2 
 	for k in tqdm(klist):
@@ -461,12 +478,15 @@ if __name__ == '__main__':
 		Z in a Z_range, currently going from 0.7 to 2.0 inclusive 
 		Turn desired effects off or on with the booleans
 	"""
+	print(get_SNR_on_Z(0.7,damp=True,Newtonian=True,damp_on_Ptw=False,kmax_zdep=False))
 
 	snrs = []
+
 
 	# # dop_snrs_fixedkmax = []
 	for Z in np.arange(0.7,2.1,0.1):
 	 	snrs += [get_SNR_on_Z(Z,damp=True,Newtonian=True,damp_on_Ptw=False,kmax_zdep=False)]
+
 
 	# # 	dop_snrs_fixedkmax += [get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=False)]
 	

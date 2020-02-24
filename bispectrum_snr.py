@@ -54,10 +54,6 @@ pars.set_dark_energy() #LCDM (default)
 pars.InitPower.set_params(ns=nss, r=0, As=Ass)
 pars.set_for_lmax(2500, lens_potential_accuracy=0);
 
-powerspec_data = np.loadtxt("bispectrum_inputs_linmatterpower.dat")
-Pmz0 = interp1d(powerspec_data[:,0],powerspec_data[:,1])
-growthf_data = np.loadtxt("bispectrum_inputs_growthfactor.dat")
-growthr_data = np.loadtxt("bispectrum_inputs_growthrate.dat")
 
 background = camb.get_background(pars)
 
@@ -140,21 +136,21 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True):
 	class NotATriangle(Exception):
 		pass
 
-	def get_costheta(k1,k2,k3):
+	def get_theta(k1,k2,k3):
 		"""
 			Function to get angle between two wavevectors
 		"""
-		x =  0.5 * ( k3**2 - (k1**2 + k2**2))/(k1 * k2)
-		# if x>1 or x<-1:
-		# 	raise NotATriangle()
-		return x #np.arccos(x)
+		x = 0.5 * (k3**2 - (k1**2 + k2**2))/(k1 * k2)
+		if x>1 or x<-1:
+			raise NotATriangle()
+		return np.arccos(x)
 
 	def get_mus(MU_1,PHI,k):
 		"""
 			Function to return mu1,mu2,mu3 when given mu1 and phi, and k as dict. Returns dict
 		"""
 		mu = {1:MU_1}
-		mu[2]=mu[1]*(k["costheta"]) + np.sqrt(1.0-mu[1]**2) * np.sqrt(abs(1 - (k["costheta"])**2)) *np.cos(PHI)
+		mu[2]=mu[1]*np.cos(k["theta"]) + np.sqrt(1.0-mu[1]**2) * np.sin(k["theta"])*np.cos(PHI)
 		mu[3] = - (k[1] / k[3]) * mu[1] - (k[2] / k[3]) * mu[2]
 		return mu
 
@@ -409,13 +405,30 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True):
 	for k1 in k_bins:
 		for k2 in k_bins[k_bins<=k1]:
 			for k3 in k_bins[k_bins<=k2]:  #np.arange(max(kmin,abs(k1-k2)),k2+deltak,deltak): #
-				if (k1 - k2 - k3 <= 1e-8):
-					# if (math.isclose(abs(get_costheta(k1,k2,k3)),1,abs_tol=1e-8)): # or math.isclose(abs(get_costheta(k1,k3,k2)),1,abs_tol=1e-8) or math.isclose(abs(get_costheta(k2,k3,k1)),1,abs_tol=1e-8)):
-					# 	continue
-					# else:
-					k = {1:k1, 2:k2, 3:k3, "costheta":get_costheta(k1,k2,k3)} 
-					klist.append(k)
+				#if k1>=k2>=k3:
+				try:
+					if (k1 - k2 - k3 <= 1e-8):
+					#if math.isclose(get_theta(k1,k2,k3)+get_theta(k1,k3,k2)+get_theta(k2,k3,k1), 2*np.pi, abs_tol=1e-8):
+						k = {1:k1, 2:k2, 3:k3, "theta":get_theta(k1,k2,k3)} 
+						klist.append(k)
+				except NotATriangle:
+					continue
+			else:
+				continue
 
+
+	#stupid print statements for debugging
+	# for i in range(0,5):
+	# 	print(klist[i])
+	# print("P(kmin): ","\t",Pmz(kmin))
+	# print("f: \t", f)
+	# for i in range(1,20):
+	# 	print("beta",i,"\t",beta[i])
+
+	print(len(k_bins))
+	print(v_euclid)
+	print(kf)
+	print(kmax)
 
 	#calculating snr^2 
 	for k in tqdm(klist):
@@ -431,34 +444,32 @@ if __name__ == '__main__':
 		Turn desired effects off or on with the booleans
 	"""
 
-
 	#snrs = []
-	snrs_fixedk = []
+	dop_snrs_fixedkmax = []
 	for Z in np.arange(0.7,2.1,0.1):
 	 	#snrs += [get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True)]
-	 	snrs_fixedk += [get_SNR_on_Z(Z,damp=True,Newtonian=True,damp_on_Ptw=False,kmax_zdep=False)]
+	 	dop_snrs_fixedkmax += [get_SNR_on_Z(Z,damp=True,Newtonian=True,damp_on_Ptw=False,kmax_zdep=False)]
 
 
 	# #let's write this to a file
 
 	zrange = np.arange(0.7,2.1,0.1)
-	data = np.array([zrange,snrs_fixedk])
+	data = np.array([zrange,snrs,dop_snrs_fixedkmax])
 	data = data.T 
-	txtfile_name = "newtinclflat.txt"
+	txtfile_name = "doppler_bothkmax.txt"
 	with open(txtfile_name, 'w+') as datafile_id:
 
-		np.savetxt(datafile_id, data, fmt=['%.1f','%.8f'], header="z \t SNR")
+		np.savetxt(datafile_id, data, fmt=['%.1f','%.8f', '%.8f'], header="z \t B SNR zdep kmax \t B SNR fixed kmax")
 	
-	# # #plotting here
-	# plt.figure(figsize=(8,8))
-	# #plt.plot(np.arange(0.7,2.1,0.1),snrs,label="D B SNR - z dep k_max",marker='o')
-	# #plt.plot(py_z,py_b,label="Y&P SNR")
-	# plt.plot(np.arange(0.7,2.1,0.1),snrs,label='D B SNR zdep kmax',marker='o')
-	# plt.plot(np.arange(0.7,2.1,0.1),snrs_fixedk,label='D B SNR fixed kmax',marker='o')
-	# plt.xlim(0.6,2)
-	# # # #plt.ylim(0,300)
-	# plt.legend()
-	# plt.savefig("doppler_fuckingfinally.png")
+	# #plotting here
+	plt.figure(figsize=(8,8))
+	#plt.plot(np.arange(0.7,2.1,0.1),snrs,label="D B SNR - z dep k_max",marker='o')
+	#plt.plot(py_z,py_b,label="Y&P SNR")
+	plt.plot(np.arange(0.7,2.1,0.1),dop_snrs_fixedkmax,label='D B SNR - fixed k_max',marker='o')
+	plt.xlim(0.6,2)
+	# # #plt.ylim(0,300)
+	plt.legend()
+	plt.savefig("test3.png")
 
 	
 	
