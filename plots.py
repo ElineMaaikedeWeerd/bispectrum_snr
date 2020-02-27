@@ -29,28 +29,51 @@ py_b = py_data[:,2]
 
 #EMW data:
 
-emw_data = np.loadtxt("newt_exclflat.txt")
+emw_data = np.loadtxt("snr_relativistic_planck2015.txt")
 emw_z = emw_data[:,0]
-emw_b = emw_data[:,1]
+emw_bvark = emw_data[:,1]
+emw_bfixk = emw_data[:,2]
+# emw_bnewt = emw_data[:,3]
+
 
 #OU data:
 
+
 #SJ data
 
-sj_data = np.loadtxt("newt_inclflat.txt")
+sj_data = np.loadtxt("snr_Planck2015_Euclid_kmax_0.10hz_includeZeroAreaTriangles.dat")
 sj_z = sj_data[:,0]
-sj_b = sj_data[:,1]
+sj_bnewt = sj_data[:,1]
+sj_brel = sj_data[:,2]
+sj_cumnewt = sj_data[:,3]
+sj_cumrel = sj_data[:,4]
 
 #calculate error
+
+# rpe_emwsj = ((sj_b - emw_b) / sj_b) * 100
+# rpe_ypemw = ((py_b - emw_b) / py_b) * 100
+# rp_ypsj = ((py_b - sj_b) / py_b) * 100 
+
+
+##
+#any other stuff
+##
+
+
 
 
 ## plotting ##
 
 #plt.figure(figsize=(8,8))
-plt.plot(py_z, py_b, label = "P&Y",marker='o')
-plt.plot(emw_z,emw_b,label= "Newt excl flat", marker='o')
-plt.plot(sj_z, sj_b, label= "Newt incl flat", marker='o')
+# plt.plot(py_z, py_b, label = "P&Y",marker='o')
+# plt.plot(emw_z,emw_b,label= "Newt excl flat", marker='o')
+plt.plot(sj_z, sj_brel,label="SJ", marker='o')
+plt.plot(emw_z,emw_bvark,label="EMW",marker='o')
+
+# plt.plot(np.arange(0.7,2.1,0.1), rpe_ypemw, label= "emw yp", marker='o')
+# plt.plot(np.arange(0.7,2.1,0.1), rp_ypsj, label= "sj yp", marker='o')
+
 plt.ylabel("S/N")
 plt.xlabel("z")
 plt.legend()
-plt.savefig("newt_comparisons.png")
+plt.savefig("dopcomparsonvarkmax_2015.png")

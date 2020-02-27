@@ -24,13 +24,24 @@ import matplotlib.pyplot as plt
 
 #Fiducial cosmological parameters: Planck 2018
 c = const.c.value
-hubble = 0.6766
-omegab = 0.02242 * hubble**-2 
-omegac = 0.11933 * hubble**-2 
-om0 = 0.3111  #omegac+omegab
+# hubble = 0.6766
+# omegab = 0.02242 * hubble**-2 
+# omegac = 0.11933 * hubble**-2 
+# om0 = 0.3111  #omegac+omegab
+# H00 = 100 * hubble
+# Ass = 2.139e-9
+# nss = 0.9665
+# gamma = 0.545
+
+
+#planck 2015:
+hubble = 0.6780
+omegab = 0.02226 / hubble**2 
+omegac = 0.1186 / hubble**2
+om0 = 0.308 #omegab + omegac
 H00 = 100 * hubble
 Ass = 2.139e-9
-nss = 0.9665
+nss = 0.9677
 gamma = 0.545
 
 
@@ -54,10 +65,16 @@ pars.set_dark_energy() #LCDM (default)
 pars.InitPower.set_params(ns=nss, r=0, As=Ass)
 pars.set_for_lmax(2500, lens_potential_accuracy=0);
 
-powerspec_data = np.loadtxt("bispectrum_inputs_linmatterpower.dat")
-Pmz0 = interp1d(powerspec_data[:,0],powerspec_data[:,1])
-growthf_data = np.loadtxt("bispectrum_inputs_growthfactor.dat")
+
+power_data = np.loadtxt("bispectrum_inputs_linmatterpower.dat")
+Pmz0 = interp1d(power_data[:,0],power_data[:,1])
+
+growtf_data = np.loadtxt("bispectrum_inputs_growthfactor.dat")
+growthf = interp1d(growtf_data[:,0],growtf_data[:,1])
+
 growthr_data = np.loadtxt("bispectrum_inputs_growthrate.dat")
+growthrate = interp1d(growthr_data[:,0],growthr_data[:,1])
+
 
 background = camb.get_background(pars)
 
@@ -338,21 +355,28 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True):
 	kh, z, pk = results.get_matter_power_spectrum(minkh=1e-4, maxkh=2.0, npoints = 10000)
 	s8 = np.array(results.get_sigma8())
 
-	#Pm in, at z=Z
-	Pmz = interp1d(kh, (pk[0]))
+	# #Pm in, at z=Z
+	# Pmz = interp1d(kh, (pk[0]))
+
+	#alternative way of doing power spectrum 
+			#power spectrum at redshift Z
+	def Pm(i,k):
+		kk = k[i]
+		return growthf(Z)**2 * Pmz0(kk)
 
 
 
 	#Calculate all params at redshift Z
-	Hu = results.h_of_z(Z) * (1/(1 + Z))
-	H0 = results.h_of_z(0)
+	Hu = results.h_of_z(Z) * (1 / (1 + Z)) / hubble #(1 + Z) * H00 * (om0 * (1 + Z)**3 + 1 -om0 )**(1/2)  / hubble #
+	H0 = results.h_of_z(0) / hubble
 	om_m0 = om0
-	om_m = om_m0 * (H0**2/Hu**2) *(1+Z)
-	f = get_growth(Z)
-	df = Hu* ((1/2)*(3*om_m -4)*f - f**2 + (3/2)*om_m)
-	dHu = H0**2 * (-(1/2)* (1+Z) * om_m0 + (1/(1+Z))**2 * (1-om_m0))
-	ddHu = H0**2 * ( (1/2)*Hu*(1+Z)*om_m0 + (1/(1+Z))**2 * 2 * Hu * (1-om_m0) )
-	chi = results.angular_diameter_distance(Z) * (1 + Z)
+	om_m = om_m0 * (H0**2 / Hu**2) * (1+Z)
+	f = growthrate(Z)  #get_growth(Z)
+	df = Hu * ( (1/2) * (3 * om_m - 4) * f - f**2 + (3/2) * om_m)
+	dHu = H0**2 * (-(1/2)* (1+Z) * om_m0 + (1 / (1+Z) )**2 * (1 - om_m0)) 
+	ddHu = H0**2 * ( (1/2) * Hu * (1+Z) * om_m0 + (1 / (1+Z))**2 * 2 * Hu * (1 - om_m0) ) 
+	chi = results.angular_diameter_distance(Z) * (1 + Z) * hubble 
+
 	cap_L = 1
 	partdQ=0
 	B1 =  0.9 + 0.4 * Z
@@ -363,8 +387,8 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True):
 	bs = 0.0409 - 0.199 * Z - 0.0166 * Z**2 + 0.00268 * Z**3
 	Q = Q_euclid(Z)
 	dQ= 0
-	gamma1 = Hu* (f * (b_e - 2*Q -(2*(1-Q)/(chi*Hu)) - (dHu/Hu**2)))
-	gamma2 = Hu**2 * (f*(3-b_e) + (3/2)*om_m*(2+b_e - f- 4*Q - (2*(1-Q)/(chi*Hu)) - (dHu/Hu**2) ))
+	gamma1 = Hu* (f * (b_e - 2*Q -( 2 * (1 - Q) / (chi * Hu)) - (dHu / Hu**2)))
+	gamma2 = Hu**2 * (f * (3 - b_e) + (3/2) * om_m * (2 + b_e - f- 4 * Q - (2 * (1 - Q) / (chi * Hu)) - (dHu / Hu**2) ))
 	partdb1 = 0
 	fnl=0
 
@@ -417,6 +441,9 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True):
 					klist.append(k)
 
 
+	print(len(k_bins))
+
+
 	#calculating snr^2 
 	for k in tqdm(klist):
 		snr += arr_func(k,mu1,phis)
@@ -430,24 +457,26 @@ if __name__ == '__main__':
 		Z in a Z_range, currently going from 0.7 to 2.0 inclusive 
 		Turn desired effects off or on with the booleans
 	"""
+	
 
-
-	#snrs = []
+	snrs = []
 	snrs_fixedk = []
+	#newtsnrs = []
 	for Z in np.arange(0.7,2.1,0.1):
-	 	#snrs += [get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True)]
-	 	snrs_fixedk += [get_SNR_on_Z(Z,damp=True,Newtonian=True,damp_on_Ptw=False,kmax_zdep=False)]
+	 	snrs += [get_SNR_on_Z(Z,damp=True,Newtonian=True,damp_on_Ptw=False,kmax_zdep=False)]
+	 	# snrs_fixedk += [get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=False)]
+	 	#newtsnrs += [get_SNR_on_Z(Z,damp=True, Newtonian=True, damp_on_Ptw=False,kmax_zdep=False)]
 
 
-	# #let's write this to a file
+	# # let's write this to a file
 
-	zrange = np.arange(0.7,2.1,0.1)
-	data = np.array([zrange,snrs_fixedk])
-	data = data.T 
-	txtfile_name = "newtinclflat.txt"
-	with open(txtfile_name, 'w+') as datafile_id:
+	# zrange = np.arange(0.7,2.1,0.1)
+	# data = np.array([zrange,snrs,snrs_fixedk])
+	# data = data.T 
+	# txtfile_name = "snr_relativistic_planck2015.txt"
+	# with open(txtfile_name, 'w+') as datafile_id:
 
-		np.savetxt(datafile_id, data, fmt=['%.1f','%.8f'], header="z \t SNR")
+	# 	np.savetxt(datafile_id, data, fmt=['%.1f','%.8f','%.8f'], header="z \t SNR var kmax \t SNR fix kmax ")
 	
 	# # #plotting here
 	# plt.figure(figsize=(8,8))
@@ -458,7 +487,7 @@ if __name__ == '__main__':
 	# plt.xlim(0.6,2)
 	# # # #plt.ylim(0,300)
 	# plt.legend()
-	# plt.savefig("doppler_fuckingfinally.png")
+	# plt.savefig("fuck.png")
 
 	
 	

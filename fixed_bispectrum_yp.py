@@ -341,7 +341,7 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True):
 		bisp = B_full(k,mu,B1,B2,gamma1,gamma2,beta,f)
 		varb_num = np.pi * kf**3 * mu_range * phi_range * P_twiddle(1,k,mu,B1,f) * P_twiddle(2,k,mu,B1,f) * P_twiddle(3,k,mu,B1,f)
 		varb_den = k[1] * k[2] * k[3] * (deltak)**3 * deltamu * deltaphi
-		res = bisp #(abs(bisp)**2) * varb_den / varb_num
+		res = (abs(bisp)**2) * varb_den / varb_num
 		return res.sum()
 
 	def set_kmax():
@@ -459,11 +459,6 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True):
 					klist.append(k)
 
 
-	print(klist[:5])
-
-	print(arr_func(klist[0],mu1,phis))
-	print(arr_func(klist[1],mu1,phis))
-
 
 	#calculating snr^2 
 	for k in tqdm(klist):
@@ -478,7 +473,7 @@ if __name__ == '__main__':
 		Z in a Z_range, currently going from 0.7 to 2.0 inclusive 
 		Turn desired effects off or on with the booleans
 	"""
-	print(get_SNR_on_Z(0.7,damp=True,Newtonian=True,damp_on_Ptw=False,kmax_zdep=False))
+
 
 	snrs = []
 

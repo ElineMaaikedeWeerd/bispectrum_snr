@@ -1,0 +1,51 @@
+We thank the referee for their insightful comments. We respond to each point in turn. (do we call out the referee regarding the super-horizon comments)
+
+1) This is the first time the spherical harmonics decomposition has been performed with GR effects included. An additional novelty is that the coefficients have been worked out analytically. We have clarified the introduction accordingly. 
+
+2) In the density contrast up to second order, relativistic effects such as volume distortions, time delay effects, and Doppler corrections all enter and couple together. It is these effects that we are considering. (add reference to Bertacca paper) The RSD term can be derived in a Newtonian context and hence we include this in the Newtonian expressions. At second order this corresponds to the kernel Z_2 (check)
+
+3) The referee is correct to point out that we need to include the GR effects to eliminate possible biases when analysing large scale structure data. Additionally a variety of the effects that appear in the bispetrum are relativistic contributions that have not been measured elsewhere and therefore we believe this is interesting in its own right, to find ways to detect these. 
+
+4) Done 
+
+5) In follow-up work we are investigating this, but we expect the dipole to have the strongest GR signature. Refer to snr paper 1911.02398
+
+6) To clarify
+
+7) Change in txt to say redshift- and bias-dependent coefficients. 
+
+8) Highlight bit in text where we explain this 
+
+9) They vanish exactly. (find bit in paper where this is explained)
+
+10) Restate
+
+11) The assumption here is that the small-scale modes are sufficiently sub-equality scale, and the large-scale modes are larger than the equality scale. (add to text)
+
+12) We're doing a detailed study of this presently. They will all change. (refer to paper 1)
+
+13) Define gamma
+
+14) Change to using lowercase b_\ell 
+
+15) Change the captions, label them
+
+16) Increase font size
+
+17) Add some more interpretation in the plot 
+
+18) Clarify in the text (Roy)
+
+19) To implement
+
+20) Rephrase to make it clearer
+
+21) To fix (Chris)
+
+22) To clarify 
+
+23) To fix
+
+24) To fix
+
+25) This is work under investigation, see 1911.02398 for the leading order contribution, which receives no GR correction to the covariance
