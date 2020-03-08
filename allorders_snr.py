@@ -80,7 +80,7 @@ background = camb.get_background(pars)
 
 #this is a fn that will get the SNR for some Z- really this should be a class! tbc 
 
-def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True):
+def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True,leadingord=True,leadingvar=True):
 	#Define E(z) = H(z)/H0
 	def Ez(zc):
 		return np.sqrt(1-om0+om0*pow(1+zc,3))
@@ -220,7 +220,11 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True):
 		return B1 + f * mu[i]**2
 
 	def KGR1(i,mu,k,gamma1,gamma2):
-		return (gamma1/k[i])*1j*mu[i] 
+		if leadingord:
+			sqterm = 0
+		else:
+			sqterm = 1
+		return (gamma1/k[i])*1j*mu[i] + sqterm * (gamma2 / k[i]**2)
 
 	#Second order Newtonian, GR Fourier space kernels
 	def KN2(i,j,l,k,mu,B1,B2,f):
@@ -240,20 +244,24 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True):
 		F_f = F(i,j,l,k)
 		G_f = G(i,j,l,k)
 		k_prod = k[i]**2 * k[j]**2
-		# p1 = beta[1] + E_f * beta[2]
-		# p2 = 1j* ((mu[i] * k[i] + mu[j] * k[j]) * beta[3] + mu[l] * k[l] * (beta[4] + E_f * beta[5]) )
-		# p3 = k_prod/(k[l]**2) * (F_f * beta[6] + G_f * beta[7]) + (mu[i] * k[i] * mu[j] * k[j])*beta[8]
-		# p4 = mu[l]**2 * k[l]**2 * (beta[9] + E_f * beta[10]) + (k[i] * k[j] * cosinus) * beta[11]
-		# p5 = (k[i]**2 + k[j]**2) * beta[12] + (mu[i]**2 * k[i]**2 + mu[j]**2 * k[j]**2) * beta[13]
+		p1 = beta[1] + E_f * beta[2]
+		p2 = 1j* ((mu[i] * k[i] + mu[j] * k[j]) * beta[3] + mu[l] * k[l] * (beta[4] + E_f * beta[5]) )
+		p3 = k_prod/(k[l]**2) * (F_f * beta[6] + G_f * beta[7]) + (mu[i] * k[i] * mu[j] * k[j])*beta[8]
+		p4 = mu[l]**2 * k[l]**2 * (beta[9] + E_f * beta[10]) + (k[i] * k[j] * cosinus) * beta[11]
+		p5 = (k[i]**2 + k[j]**2) * beta[12] + (mu[i]**2 * k[i]**2 + mu[j]**2 * k[j]**2) * beta[13]
 		p_comp1 = (mu[i] * k[i]**3 + mu[j] * k[j]**3) * beta[14]
 		p_comp2 = (mu[i] * k[i] + mu[j] * k[j]) * k[i] * k[j] * cosinus * beta[15]
 		p_comp3 = k[i] * k[j] * (mu[i] * k[j] + mu[j] * k[i]) * beta[16]
 		p_comp4 = (mu[i]**3 * k[i]**3 + mu[j]**3 * k[j]**3) * beta[17]
 		p_comp5 = mu[i] * mu[j] * k[i] * k[j] * (mu[i] * k[i] + mu[j] * k[j]) * beta[18]
 		p_comp6 = mu[l] * k_prod/k[l] * G_f * beta[19]
-		# real = p1 + p2 + p3 + p4 + p5
+		real = p1 + p2 + p3 + p4 + p5
 		comp = p_comp1 + p_comp2 + p_comp3 + p_comp4 + p_comp5 + p_comp6
-		return  (1/k_prod) * (1j * comp)
+		if leadingord:
+			realbool = 0
+		else:
+			realbool = 1
+		return  (1/k_prod) * (realbool * real + 1j * comp)
 	
 
 
@@ -306,7 +314,11 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True):
 			damp_term = np.exp(- (1/2) * ((k[i] * mu[i] * sigma)**2))
 		else:
 			damp_term = 1
-		return KN1(i,mu,B1,f)**2  * Pm(i,k) * damp_term  + (1/ng_euclid)
+		if leadingvar:
+			grvar = 0
+		else:
+			grvar = mu[i]**2 * (gamma1**2 / k[i]**2) + 2 * KN1(i,mu,B1,f) * (gamma2 / k[i]**2) + (gamma2 / k[i]**2)**2
+		return (KN1(i,mu,B1,f)**2 + grvar ) * Pm(i,k) * damp_term  + (1/ng_euclid)
 
 	def P_galaxy(i,k,mu,B1,f):
 		"""
@@ -477,34 +489,40 @@ if __name__ == '__main__':
 	
 
 	snrs = []
+	snrs2 = []
+	snrs3 = []
 	# snrs_fixedk = []
 	# newtsnrs = []
 	for Z in np.arange(0.7,2.1,0.1):
-	 	snrs += [get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=False)]
+	 	snrs += [get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True,leadingord=True,leadingvar=True)]
+	 	snrs2 += [get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True,leadingord=True,leadingvar=False)]
+	 	snrs3 += [get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True,leadingord=False,leadingvar=False)]
 	 	# snrs_fixedk += [get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=False)]
 	 	# newtsnrs += [get_SNR_on_Z(Z,damp=True, Newtonian=True, damp_on_Ptw=False,kmax_zdep=False)]
 
 
-	# # let's write this to a file
-	# zrange = np.arange(0.7,2.1,0.1)
-	# data = np.array([zrange,snrs])
-	# data = data.T 
-	# txtfile_name = "snr_allHoverkcorr.txt"
-	# with open(txtfile_name, 'w+') as datafile_id:
+	# let's write this to a file
+	zrange = np.arange(0.7,2.1,0.1)
+	data = np.array([zrange,snrs,snrs2,snrs3])
+	data = data.T 
+	txtfile_name = "snr_allHoverkcorr.txt"
+	with open(txtfile_name, 'w+') as datafile_id:
 
-	# 	np.savetxt(datafile_id, data, fmt=['%.1f','%.8f'], header="z \t SNR all H/k ")
+		np.savetxt(datafile_id, data, fmt=['%.1f','%.8f','%.8f','%.8f'], header="z \t SNR LO \t var HO \t all HO ")
 	
 	# #plotting here
 	plt.figure(figsize=(8,8))
 	#plt.plot(np.arange(0.7,2.1,0.1),snrs,label="D B SNR - z dep k_max",marker='o')
 	#plt.plot(py_z,py_b,label="Y&P SNR")
-	plt.plot(np.arange(0.7,2.1,0.1),np.sqrt(snrs),label='D B SNR zdep kmax',marker='o')
+	plt.plot(np.arange(0.7,2.1,0.1),np.sqrt(snrs),label='leading H/k only',marker='o')
+	plt.plot(np.arange(0.7,2.1,0.1),np.sqrt(snrs2),label='higher H/k in Var',marker='o')
+	plt.plot(np.arange(0.7,2.1,0.1),np.sqrt(snrs3),label='all H/k',marker='o')
 	# plt.plot(np.arange(0.7,2.1,0.1),np.sqrt(snrs_fixedk),label='D B SNR fixed kmax',marker='o')
 	plt.xlim(0.6,2)
 	plt.xlabel("z")
 	plt.ylabel("S/N")
 	# # #plt.ylim(0,300)
-	# plt.legend()
+	plt.legend()
 	plt.savefig("test.png")
 
 
