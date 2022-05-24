@@ -1,7 +1,6 @@
 """
 	This code computes the signal to noise ratio for Newtonian and leading order 
 	relativistic bispectrum reproducing Yankelevich & Porciani's result -- excludes flattened (co-linear) triangle shapes
-	Needs python3 with camb, tqdm, and astropy installed. 
 """
 import numpy as np
 
@@ -122,9 +121,7 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True):
 			Function to get angle between two wavevectors
 		"""
 		x =  0.5 * ( k3**2 - (k1**2 + k2**2))/(k1 * k2)
-		# if x>1 or x<-1:
-		# 	raise NotATriangle()
-		return x #np.arccos(x)
+		return x 
 
 	def get_mus(MU_1,PHI,k):
 		"""

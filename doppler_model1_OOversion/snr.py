@@ -386,9 +386,9 @@ class SNR:
 			s_B takes a dictionary and returns an integer, to take symmetry/overcounting into account
 			in the Var[B]
 		"""
-		if (math.isclose(k[1],k[2],1e-8) and math.isclose(k[2],k[3],1e-8)):
+		if (math.isclose(k[1],k[2],abs_tol=1e-8) and math.isclose(k[2],k[3],abs_tol=1e-8)):
 			return 6
-		elif (math.isclose(k[1],k[2],1e-8) or math.isclose(k[1],k[3],1e-8) or math.isclose(k[2],k[3],1e-8)):
+		elif (math.isclose(k[1],k[2],abs_tol=1e-8) or math.isclose(k[1],k[3],abs_tol=1e-8) or math.isclose(k[2],k[3],abs_tol=1e-8)):
 			return 2
 		else:
 			return 1
@@ -408,7 +408,7 @@ class SNR:
 		self.bispectrum.set_k(k)
 		self.bispectrum.set_mu(mu1,phis) 
 		bisp = self.bispectrum.B_full()
-		varb_num =  np.pi * np.power(self.k_fundamental,3) * self.mu_range * self.phi_range * self.P_twiddle(1,k,self.bispectrum.mu) * self.P_twiddle(2,k,self.bispectrum.mu) * self.P_twiddle(3,k,self.bispectrum.mu)		
+		varb_num =  s_B(k) * np.pi * np.power(self.k_fundamental,3) * self.mu_range * self.phi_range * self.P_twiddle(1,k,self.bispectrum.mu) * self.P_twiddle(2,k,self.bispectrum.mu) * self.P_twiddle(3,k,self.bispectrum.mu)		
 		varb_den = k[1] * k[2] * k[3] * np.power(self.k_fundamental,3) * self.deltamu * self.deltaphi
 		res = (abs(bisp)**2) * varb_den / varb_num
 		return res.sum()
@@ -420,7 +420,6 @@ class SNR:
 		else:
 			return 0.15
 
-	# @jit
 	def calculate_snr(self):
 		mu_bins = np.arange(-1,1,self.deltamu)
 		phi_bins = np.arange(0,2*np.pi,self.deltaphi)

@@ -1,11 +1,6 @@
 """
 	This code computes the signal to noise ratio for Newtonian and leading order 
 	relativistic bispectrum. 
-	Needs python3 with camb, tqdm, and astropy installed. 
-	Control of plotting and effects included in the main at the bottom-
-	better not touch anything else for now.. 
-	Written by E.M. de Weerd, Feb 2020
-	-- still to be improved -- 
 """
 import numpy as np
 
@@ -142,30 +137,12 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True,le
 		kk = k[i]
 		return Pmz(kk)
 
-
-	#example of how dictionaries k, mu are used- reminder to myself
-	#k = {1:k1,2:k2,3:k3,"theta":theta}
-	#mu = {1:mu1,2:mu2,3:mu3}
-
-	#and one day this will be a class and stuff should look like~ 
-	# def get_mus(self,MU_1,PHI,k):
-	#     mu = {1:MU_1}
-	#     mu[2]=mu[1]*np.cos(k["theta"]) + np.sqrt(1.0-mu[1]**2) * np.sin(k["theta"])*np.cos(PHI)
-	#     mu[3] = - (k[1] / k[3]) * mu[1] - (k[2] / k[3]) * mu[2]
-	#     return mu
-
-	#pass when it's not a triangle-
-	class NotATriangle(Exception):
-		pass
-
 	def get_costheta(k1,k2,k3):
 		"""
 			Function to get angle between two wavevectors
 		"""
 		x =  0.5 * ( k3**2 - (k1**2 + k2**2))/(k1 * k2)
-		# if x>1 or x<-1:
-		# 	raise NotATriangle()
-		return x #np.arccos(x)
+		return x 
 
 	def get_mus(MU_1,PHI,k):
 		"""
@@ -326,26 +303,15 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True,le
 		"""
 		return KN1(i,mu,B1,f)**2 * Pm(i,k) *  np.exp(- (1/2) * ((k[i] * mu[i] * sigma)**2))
 
-	# def s_B(k):
-	# 	"""
-	# 		s_B takes a dictionary and returns an integer, to take symmetry/overcounting into account
-	# 		in the Var[B]
-	# 	"""
-	# 	if (k[1]==k[2] and k[2]==k[3]):
-	# 		return 6
-	# 	elif (k[1]==k[2] or k[1]==k[3] or k[2]==k[3]):
-	# 		return 2
-	# 	else:
-	# 		return 1
 
 	def s_B(k):
 		"""
 			s_B takes a dictionary and returns an integer, to take symmetry/overcounting into account
 			in the Var[B]
 		"""
-		if (math.isclose(k[1],k[2],1e-8) and math.isclose(k[2],k[3],1e-8)):
+		if (math.isclose(k[1],k[2],abs_tol=1e-8) and math.isclose(k[2],k[3],abs_tol=1e-8)):
 			return 6
-		elif (math.isclose(k[1],k[2],1e-8) or math.isclose(k[1],k[3],1e-8) or math.isclose(k[2],k[3],1e-8)):
+		elif (math.isclose(k[1],k[2],abs_tol=1e-8) or math.isclose(k[1],k[3],abs_tol=1e-8) or math.isclose(k[2],k[3],abs_tol=1e-8)):
 			return 2
 		else:
 			return 1
@@ -363,7 +329,7 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True,le
 		"""
 		mu = get_mus(mu1,phis,k)
 		bisp = B_full(k,mu,B1,B2,gamma1,gamma2,beta,f)
-		varb_num = np.pi * kf**3 * mu_range * phi_range * P_twiddle(1,k,mu,B1,f,gamma1,gamma2) * P_twiddle(2,k,mu,B1,f,gamma1,gamma2) * P_twiddle(3,k,mu,B1,f,gamma1,gamma2)
+		varb_num = s_B(k) * np.pi * kf**3 * mu_range * phi_range * P_twiddle(1,k,mu,B1,f,gamma1,gamma2) * P_twiddle(2,k,mu,B1,f,gamma1,gamma2) * P_twiddle(3,k,mu,B1,f,gamma1,gamma2)
 		varb_den = k[1] * k[2] * k[3] * (deltak)**3 * deltamu * deltaphi
 		res = (abs(bisp)**2) * varb_den / varb_num
 		return res.sum()
@@ -461,11 +427,8 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True,le
 
 	for k1 in k_bins:
 		for k2 in k_bins[k_bins<=k1]:
-			for k3 in k_bins[k_bins<=k2]:  #np.arange(max(kmin,abs(k1-k2)),k2+deltak,deltak): #
+			for k3 in k_bins[k_bins<=k2]: 
 				if (k1 - k2 - k3 <= 1e-8):
-					# if (math.isclose(abs(get_costheta(k1,k2,k3)),1,abs_tol=1e-8)): # or math.isclose(abs(get_costheta(k1,k3,k2)),1,abs_tol=1e-8) or math.isclose(abs(get_costheta(k2,k3,k1)),1,abs_tol=1e-8)):
-					# 	continue
-					# else:
 					k = {1:k1, 2:k2, 3:k3, "costheta":get_costheta(k1,k2,k3)} 
 					klist.append(k)
 
@@ -476,7 +439,6 @@ def get_SNR_on_Z(Z,damp=True,Newtonian=False,damp_on_Ptw=False,kmax_zdep=True,le
 	#calculating snr^2 
 	for k in tqdm(klist):
 		snr += arr_func(k,mu1,phis)
-	#return snr
 	return snr
 
 if __name__ == '__main__':
